@@ -28,6 +28,8 @@
   "condition",
   "column_break_12",
   "fields",
+  "button_parameters_section",
+  "button_parameters",
   "property_section",
   "set_property_after_alert",
   "property_value",
@@ -119,6 +121,18 @@
    "fieldtype": "Table",
    "label": "Fields",
    "options": "WhatsApp Message Fields"
+  },
+  {
+   "fieldname": "button_parameters_section",
+   "fieldtype": "Section Break",
+   "label": "Button Parameters"
+  },
+  {
+   "description": "Configure button parameters for templates with buttons. Use {{field_name}} for dynamic values.",
+   "fieldname": "button_parameters",
+   "fieldtype": "Table",
+   "label": "Button Parameters",
+   "options": "WhatsApp Button Parameters"
   },
   {
    "fieldname": "section_break_11",

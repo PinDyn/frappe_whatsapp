@@ -9,7 +9,7 @@ from frappe.utils.safe_exec import get_safe_globals, safe_exec
 from frappe.integrations.utils import make_post_request
 from frappe.desk.form.utils import get_pdf_link
 from frappe.utils import add_to_date, nowdate, datetime
-from frappe_whatsapp.utils.button_utils import get_template_buttons_with_dynamic_values
+from frappe_whatsapp.utils.button_utils import get_template_buttons_with_dynamic_values, process_dynamic_payload
 
 
 class WhatsAppNotification(Document):
@@ -219,10 +219,11 @@ class WhatsAppNotification(Document):
                 })
             self.content_type = template.header_type.lower()
 
-            # Add buttons if template has them
+            # Add buttons if template has them and notification has button parameters
             frappe.log_error("Template Buttons Debug", f"Template {template.name} has buttons: {bool(template.buttons)}")
-            if template.buttons:
-                frappe.log_error("Button Count", f"Number of buttons: {len(template.buttons)}")
+            frappe.log_error("Notification Button Parameters", f"Notification has button parameters: {bool(self.button_parameters)}")
+            if template.buttons and self.button_parameters:
+                frappe.log_error("Button Count", f"Number of template buttons: {len(template.buttons)}, Number of button parameters: {len(self.button_parameters)}")
                 button_component = self.get_template_buttons_component(template, doc, doc_data)
                 frappe.log_error("Button Component", f"Button component created: {button_component}")
                 if button_component:
@@ -324,13 +325,51 @@ class WhatsAppNotification(Document):
         """Get buttons component for template message."""
         frappe.log_error("Button Component Debug", f"Template buttons: {template.buttons}")
         frappe.log_error("Button Count Check", f"Button count: {len(template.buttons) if template.buttons else 0}")
+        frappe.log_error("Button Parameters", f"Notification button parameters: {self.button_parameters}")
         
         if not template.buttons or len(template.buttons) > 3:
             frappe.log_error("Button Validation", f"Validation failed: no buttons or too many buttons")
             return None
             
-        # Use the utility function to get processed buttons with dynamic values
-        buttons = get_template_buttons_with_dynamic_values(template, doc, doc_data)
+        if not self.button_parameters:
+            frappe.log_error("Button Validation", f"No button parameters configured in notification")
+            return None
+            
+        # Create buttons using notification parameters
+        buttons = []
+        for param in self.button_parameters:
+            if param.button_index >= len(template.buttons):
+                frappe.log_error("Button Index Error", f"Button index {param.button_index} exceeds template button count")
+                continue
+                
+            template_button = template.buttons[param.button_index]
+            button_data = {
+                "type": param.button_type,
+                "text": template_button.button_text
+            }
+            
+            # Process dynamic values
+            if param.button_type == "QUICK_REPLY" and param.payload:
+                payload = process_dynamic_payload(param.payload, doc, doc_data)
+                button_data["payload"] = payload
+            elif param.button_type == "URL" and param.url:
+                url = process_dynamic_payload(param.url, doc, doc_data)
+                button_data["url"] = url
+            elif param.button_type == "PHONE_NUMBER" and param.phone_number:
+                phone = process_dynamic_payload(param.phone_number, doc, doc_data)
+                button_data["phone_number"] = phone
+            elif param.button_type == "FLOW":
+                button_data.update({
+                    "flow_id": int(param.flow_id) if param.flow_id else 0,
+                    "flow_action": param.flow_action,
+                    "navigate_screen": param.navigate_screen
+                })
+            elif param.button_type == "COPY_CODE" and param.copy_code_example:
+                example = process_dynamic_payload(param.copy_code_example, doc, doc_data)
+                button_data["example"] = [example]
+            
+            buttons.append(button_data)
+            
         frappe.log_error("Processed Buttons", f"Processed buttons: {buttons}")
             
         return {
