@@ -219,36 +219,24 @@ class WhatsAppTemplates(Document):
         buttons = []
         for button in self.buttons:
             button_data = {
-                "type": button.button_type
+                "type": button.button_type,
+                "text": button.button_text
             }
             
-            if button.button_type == "QUICK_REPLY":
-                button_data.update({
-                    "text": button.button_text,
-                    "payload": button.payload
-                })
-            elif button.button_type == "URL":
-                button_data.update({
-                    "text": button.button_text,
-                    "url": button.url
-                })
+            if button.button_type == "URL":
+                button_data["url"] = button.url
             elif button.button_type == "PHONE_NUMBER":
-                button_data.update({
-                    "text": button.button_text,
-                    "phone_number": button.phone_number
-                })
+                button_data["phone_number"] = button.phone_number
             elif button.button_type == "FLOW":
                 button_data.update({
-                    "text": button.button_text,
                     "flow_id": int(button.flow_id) if button.flow_id else 0,
                     "flow_action": button.flow_action,
                     "navigate_screen": button.navigate_screen
                 })
             elif button.button_type == "COPY_CODE":
-                button_data.update({
-                    "text": button.button_text,
-                    "example": [button.copy_code_example] if button.copy_code_example else [""]
-                })
+                button_data["example"] = [button.copy_code_example] if button.copy_code_example else [""]
+            # Note: QUICK_REPLY buttons don't include payload in template definition
+            # Payload is only used when sending the message
                 
             buttons.append(button_data)
             
