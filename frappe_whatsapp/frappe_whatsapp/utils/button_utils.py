@@ -24,8 +24,11 @@ def process_dynamic_payload(template_string, doc=None, doc_data=None):
     # Use doc_data if available, otherwise use doc
     data_source = doc_data if doc_data is not None else (doc.as_dict() if doc else {})
     
+    frappe.log_error("Process Dynamic Payload Input", f"Template: '{template_string}', Doc: {doc.name if doc else 'None'}, Doc Data: {data_source}")
+    
     def replace_field(match):
         field_name = match.group(1).strip()
+        frappe.log_error("Field Replacement", f"Looking for field: '{field_name}'")
         
         # Handle nested fields like "customer.customer_name"
         if '.' in field_name:
@@ -40,6 +43,8 @@ def process_dynamic_payload(template_string, doc=None, doc_data=None):
         else:
             current_value = data_source.get(field_name) if isinstance(data_source, dict) else None
         
+        frappe.log_error("Field Value Found", f"Field '{field_name}' = '{current_value}'")
+        
         # Convert to string and handle None values
         if current_value is None:
             return ""
@@ -51,7 +56,7 @@ def process_dynamic_payload(template_string, doc=None, doc_data=None):
     # Replace all {{field_name}} patterns
     processed_string = re.sub(r'\{\{([^}]+)\}\}', replace_field, template_string)
     
-    frappe.log_error(f"Dynamic Payload Processing", f"Template: {template_string}, Data: {data_source}, Result: {processed_string}")
+    frappe.log_error("Dynamic Payload Processing Result", f"Template: '{template_string}' -> Result: '{processed_string}'")
     
     return processed_string
 
