@@ -237,6 +237,18 @@ class WhatsAppTemplates(Document):
                     "text": button.button_text,
                     "phone_number": button.phone_number
                 })
+            elif button.button_type == "FLOW":
+                button_data.update({
+                    "text": button.button_text,
+                    "flow_id": int(button.flow_id) if button.flow_id else 0,
+                    "flow_action": button.flow_action,
+                    "navigate_screen": button.navigate_screen
+                })
+            elif button.button_type == "COPY_CODE":
+                button_data.update({
+                    "text": button.button_text,
+                    "example": [button.copy_code_example] if button.copy_code_example else [""]
+                })
                 
             buttons.append(button_data)
             
@@ -332,16 +344,28 @@ def fetch():
                     for idx, button in enumerate(buttons_list):
                         frappe.log_error("Button Details", f"Processing button {idx}: {button}")
                         
+                        # Skip unsupported button types (if any)
+                        if button.get("type") not in ["QUICK_REPLY", "URL", "PHONE_NUMBER", "FLOW", "COPY_CODE"]:
+                            frappe.log_error("Skipped Button", f"Skipping unsupported button type: {button.get('type')}")
+                            continue
+                        
                         button_doc = frappe.new_doc("WhatsApp Template Buttons")
                         button_doc.button_text = button.get("text", "")
                         button_doc.button_type = button.get("type", "")
                         
                         if button.get("type") == "QUICK_REPLY":
-                            button_doc.payload = button.get("payload", "")
+                            # For QUICK_REPLY, use the button text as payload if no payload is provided
+                            button_doc.payload = button.get("payload", button.get("text", ""))
                         elif button.get("type") == "URL":
                             button_doc.url = button.get("url", "")
                         elif button.get("type") == "PHONE_NUMBER":
                             button_doc.phone_number = button.get("phone_number", "")
+                        elif button.get("type") == "FLOW":
+                            button_doc.flow_id = str(button.get("flow_id", ""))
+                            button_doc.flow_action = button.get("flow_action", "")
+                            button_doc.navigate_screen = button.get("navigate_screen", "")
+                        elif button.get("type") == "COPY_CODE":
+                            button_doc.copy_code_example = button.get("example", [""])[0] if button.get("example") else ""
                         
                         button_doc.parent = doc.name
                         button_doc.parenttype = "WhatsApp Templates"
@@ -350,7 +374,7 @@ def fetch():
                         
                         try:
                             button_doc.db_insert()
-                            frappe.log_error("Button Success", f"Successfully inserted button: {button_doc.button_text}")
+                            frappe.log_error("Button Success", f"Successfully inserted button: {button_doc.button_text} of type {button_doc.button_type}")
                         except Exception as e:
                             frappe.log_error("Button Error", f"Failed to insert button: {e}")
 

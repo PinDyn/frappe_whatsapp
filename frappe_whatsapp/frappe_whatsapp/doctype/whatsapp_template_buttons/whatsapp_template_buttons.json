@@ -25,7 +25,7 @@
    "fieldname": "button_type",
    "fieldtype": "Select",
    "label": "Button Type",
-   "options": "QUICK_REPLY\nURL\nPHONE_NUMBER",
+   "options": "QUICK_REPLY\nURL\nPHONE_NUMBER\nFLOW\nCOPY_CODE",
    "reqd": 1
   },
   {
@@ -48,6 +48,34 @@
    "fieldtype": "Data",
    "label": "Phone Number",
    "description": "Phone number to call when button is clicked"
+  },
+  {
+   "depends_on": "eval:doc.button_type == 'FLOW'",
+   "fieldname": "flow_id",
+   "fieldtype": "Data",
+   "label": "Flow ID",
+   "description": "Flow ID for the WhatsApp flow"
+  },
+  {
+   "depends_on": "eval:doc.button_type == 'FLOW'",
+   "fieldname": "flow_action",
+   "fieldtype": "Data",
+   "label": "Flow Action",
+   "description": "Action to perform in the flow"
+  },
+  {
+   "depends_on": "eval:doc.button_type == 'FLOW'",
+   "fieldname": "navigate_screen",
+   "fieldtype": "Data",
+   "label": "Navigate Screen",
+   "description": "Screen to navigate to in the flow"
+  },
+  {
+   "depends_on": "eval:doc.button_type == 'COPY_CODE'",
+   "fieldname": "copy_code_example",
+   "fieldtype": "Data",
+   "label": "Copy Code Example",
+   "description": "Example code that will be copied"
   },
   {
    "fieldname": "column_break_1",

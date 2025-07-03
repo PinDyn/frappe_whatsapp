@@ -183,6 +183,18 @@ class WhatsAppMessage(Document):
                     "text": button.button_text,
                     "phone_number": button.phone_number
                 })
+            elif button.button_type == "FLOW":
+                button_data.update({
+                    "text": button.button_text,
+                    "flow_id": int(button.flow_id) if button.flow_id else 0,
+                    "flow_action": button.flow_action,
+                    "navigate_screen": button.navigate_screen
+                })
+            elif button.button_type == "COPY_CODE":
+                button_data.update({
+                    "text": button.button_text,
+                    "example": [button.copy_code_example] if button.copy_code_example else [""]
+                })
                 
             buttons.append(button_data)
             
