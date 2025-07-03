@@ -322,11 +322,16 @@ class WhatsAppNotification(Document):
 
     def get_template_buttons_component(self, template, doc=None, doc_data=None):
         """Get buttons component for template message."""
+        frappe.log_error("Button Component Debug", f"Template buttons: {template.buttons}")
+        frappe.log_error("Button Count Check", f"Button count: {len(template.buttons) if template.buttons else 0}")
+        
         if not template.buttons or len(template.buttons) > 3:
+            frappe.log_error("Button Validation", f"Validation failed: no buttons or too many buttons")
             return None
             
         # Use the utility function to get processed buttons with dynamic values
         buttons = get_template_buttons_with_dynamic_values(template, doc, doc_data)
+        frappe.log_error("Processed Buttons", f"Processed buttons: {buttons}")
             
         return {
             "type": "button",
