@@ -265,6 +265,10 @@ def fetch():
             f"{url}/{version}/{business_id}/message_templates",
             headers=headers,
         )
+        
+        frappe.log_error("API Response", f"Total templates received: {len(response.get('data', []))}")
+        for template in response["data"]:
+            frappe.log_error("Template Structure", f"Template {template.get('name')}: {template}")
 
         for template in response["data"]:
             # set flag to insert or update
@@ -284,8 +288,10 @@ def fetch():
 
             # update components
             frappe.log_error("Template Processing", f"Processing template {doc.name} with {len(template.get('components', []))} components")
+            frappe.log_error("All Components", f"All components for {doc.name}: {template.get('components', [])}")
             for component in template["components"]:
-                frappe.log_error("Component Type", f"Processing component type: {component.get('type')}")
+                frappe.log_error("Component Type", f"Processing component type: {component.get('type')} for template {doc.name}")
+                frappe.log_error("Component Details", f"Component details: {component}")
 
                 # update header
                 if component["type"] == "HEADER":
