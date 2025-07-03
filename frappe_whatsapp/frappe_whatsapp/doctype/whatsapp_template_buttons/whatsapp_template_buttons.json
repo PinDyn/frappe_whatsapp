@@ -33,7 +33,7 @@
    "fieldname": "payload",
    "fieldtype": "Data",
    "label": "Payload",
-   "description": "Custom payload that will be sent when button is clicked"
+   "description": "Custom payload that will be sent when button is clicked. You can use {{field_name}} to reference document fields."
   },
   {
    "depends_on": "eval:doc.button_type == 'URL'",

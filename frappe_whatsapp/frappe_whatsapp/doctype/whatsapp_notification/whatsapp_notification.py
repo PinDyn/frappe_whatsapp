@@ -9,6 +9,7 @@ from frappe.utils.safe_exec import get_safe_globals, safe_exec
 from frappe.integrations.utils import make_post_request
 from frappe.desk.form.utils import get_pdf_link
 from frappe.utils import add_to_date, nowdate, datetime
+from frappe_whatsapp.utils.button_utils import get_template_buttons_with_dynamic_values
 
 
 class WhatsAppNotification(Document):
@@ -82,6 +83,13 @@ class WhatsAppNotification(Document):
                 }
             }
             self.content_type = template.get("header_type", "text").lower()
+            
+            # Add buttons if template has them
+            if template.buttons:
+                button_component = self.get_template_buttons_component(template)
+                if button_component:
+                    data["template"]["components"].append(button_component)
+                    
             self.notify(data)
 
 
@@ -212,6 +220,12 @@ class WhatsAppNotification(Document):
                 })
             self.content_type = template.header_type.lower()
 
+            # Add buttons if template has them
+            if template.buttons:
+                button_component = self.get_template_buttons_component(template, doc, doc_data)
+                if button_component:
+                    data["template"]["components"].append(button_component)
+
             self.notify(data, doc_data)
 
     def notify(self, data, doc_data=None):
@@ -302,6 +316,21 @@ class WhatsAppNotification(Document):
             number = number[1:len(number)]
 
         return number
+
+    def get_template_buttons_component(self, template, doc=None, doc_data=None):
+        """Get buttons component for template message."""
+        if not template.buttons or len(template.buttons) > 3:
+            return None
+            
+        # Use the utility function to get processed buttons with dynamic values
+        buttons = get_template_buttons_with_dynamic_values(template, doc, doc_data)
+            
+        return {
+            "type": "button",
+            "sub_type": "quick_reply",
+            "index": 0,
+            "parameters": buttons
+        }
 
     def get_documents_for_today(self):
         """get list of documents that will be triggered today"""

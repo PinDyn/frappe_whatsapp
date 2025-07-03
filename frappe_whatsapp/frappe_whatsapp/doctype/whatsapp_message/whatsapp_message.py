@@ -4,6 +4,7 @@ import json
 import frappe
 from frappe.model.document import Document
 from frappe.integrations.utils import make_post_request
+from frappe_whatsapp.utils.button_utils import get_template_buttons_with_dynamic_values
 
 
 class WhatsAppMessage(Document):
