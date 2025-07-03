@@ -332,51 +332,22 @@ class WhatsAppNotification(Document):
             return None
             
         if not self.button_parameters:
-            frappe.log_error("Button Validation", f"No button parameters configured in notification")
-            return None
+            frappe.throw("Button parameters are required for templates with buttons. Please configure button parameters in the notification.")
             
-        # Create buttons using notification parameters
-        buttons = []
-        for param in self.button_parameters:
-            if param.button_index >= len(template.buttons):
-                frappe.log_error("Button Index Error", f"Button index {param.button_index} exceeds template button count")
-                continue
-                
-            template_button = template.buttons[param.button_index]
-            button_data = {
-                "type": param.button_type,
-                "text": template_button.button_text
-            }
+        # Validate that we have button parameters for all template buttons
+        if len(self.button_parameters) != len(template.buttons):
+            frappe.throw(f"Template has {len(template.buttons)} buttons but notification has {len(self.button_parameters)} button parameters. Please configure parameters for all buttons.")
             
-            # Process dynamic values
-            if param.button_type == "QUICK_REPLY" and param.payload:
-                payload = process_dynamic_payload(param.payload, doc, doc_data)
-                button_data["payload"] = payload
-            elif param.button_type == "URL" and param.url:
-                url = process_dynamic_payload(param.url, doc, doc_data)
-                button_data["url"] = url
-            elif param.button_type == "PHONE_NUMBER" and param.phone_number:
-                phone = process_dynamic_payload(param.phone_number, doc, doc_data)
-                button_data["phone_number"] = phone
-            elif param.button_type == "FLOW":
-                button_data.update({
-                    "flow_id": int(param.flow_id) if param.flow_id else 0,
-                    "flow_action": param.flow_action,
-                    "navigate_screen": param.navigate_screen
-                })
-            elif param.button_type == "COPY_CODE" and param.copy_code_example:
-                example = process_dynamic_payload(param.copy_code_example, doc, doc_data)
-                button_data["example"] = [example]
-            
-            buttons.append(button_data)
-            
+        # Use the utility function to get processed buttons
+        buttons = get_template_buttons_with_dynamic_values(template, self.button_parameters, doc, doc_data)
+        
         frappe.log_error("Processed Buttons", f"Processed buttons: {buttons}")
             
+        # According to WhatsApp API docs, when sending template messages with buttons,
+        # the button component should match the template structure, not use parameters
         return {
-            "type": "button",
-            "sub_type": "quick_reply",
-            "index": 0,
-            "parameters": buttons
+            "type": "BUTTONS",
+            "buttons": buttons
         }
 
     def get_documents_for_today(self):

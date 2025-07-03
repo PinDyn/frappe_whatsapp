@@ -223,20 +223,19 @@ class WhatsAppTemplates(Document):
                 "text": button.button_text
             }
             
-            if button.button_type == "URL":
+            # According to WhatsApp API docs, when creating templates:
+            # - QUICK_REPLY buttons: only type and text
+            # - URL buttons: type, text, and example URL
+            # - PHONE_NUMBER buttons: type, text, and example phone_number
+            # - COPY_CODE buttons: type, text, and example code
+            
+            if button.button_type == "URL" and button.url:
                 button_data["url"] = button.url
-            elif button.button_type == "PHONE_NUMBER":
+            elif button.button_type == "PHONE_NUMBER" and button.phone_number:
                 button_data["phone_number"] = button.phone_number
-            elif button.button_type == "FLOW":
-                button_data.update({
-                    "flow_id": int(button.flow_id) if button.flow_id else 0,
-                    "flow_action": button.flow_action,
-                    "navigate_screen": button.navigate_screen
-                })
-            elif button.button_type == "COPY_CODE":
-                button_data["example"] = [button.copy_code_example] if button.copy_code_example else [""]
-            # Note: QUICK_REPLY buttons don't include payload in template definition
-            # Payload is only used when sending the message
+            elif button.button_type == "COPY_CODE" and button.copy_code_example:
+                button_data["example"] = [button.copy_code_example]
+            # QUICK_REPLY buttons only need type and text for template creation
                 
             buttons.append(button_data)
             
@@ -333,7 +332,7 @@ def fetch():
                         frappe.log_error("Button Details", f"Processing button {idx}: {button}")
                         
                         # Skip unsupported button types (if any)
-                        if button.get("type") not in ["QUICK_REPLY", "URL", "PHONE_NUMBER", "FLOW", "COPY_CODE"]:
+                        if button.get("type") not in ["QUICK_REPLY", "URL", "PHONE_NUMBER", "COPY_CODE"]:
                             frappe.log_error("Skipped Button", f"Skipping unsupported button type: {button.get('type')}")
                             continue
                         
@@ -342,16 +341,12 @@ def fetch():
                         button_doc.button_type = button.get("type", "")
                         
                         if button.get("type") == "QUICK_REPLY":
-                            # For QUICK_REPLY, use the button text as payload if no payload is provided
-                            button_doc.payload = button.get("payload", button.get("text", ""))
+                            # For QUICK_REPLY, no payload needed in template creation
+                            pass
                         elif button.get("type") == "URL":
                             button_doc.url = button.get("url", "")
                         elif button.get("type") == "PHONE_NUMBER":
                             button_doc.phone_number = button.get("phone_number", "")
-                        elif button.get("type") == "FLOW":
-                            button_doc.flow_id = str(button.get("flow_id", ""))
-                            button_doc.flow_action = button.get("flow_action", "")
-                            button_doc.navigate_screen = button.get("navigate_screen", "")
                         elif button.get("type") == "COPY_CODE":
                             button_doc.copy_code_example = button.get("example", [""])[0] if button.get("example") else ""
                         
