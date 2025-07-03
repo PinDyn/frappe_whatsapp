@@ -166,44 +166,30 @@ class WhatsAppMessage(Document):
         buttons = []
         for button in template.buttons:
             button_data = {
-                "type": button.button_type
+                "type": button.button_type,
+                "text": button.button_text
             }
             
-            if button.button_type == "QUICK_REPLY":
-                button_data.update({
-                    "text": button.button_text,
-                    "payload": button.payload
-                })
-            elif button.button_type == "URL":
-                button_data.update({
-                    "text": button.button_text,
-                    "url": button.url
-                })
-            elif button.button_type == "PHONE_NUMBER":
-                button_data.update({
-                    "text": button.button_text,
-                    "phone_number": button.phone_number
-                })
-            elif button.button_type == "FLOW":
-                button_data.update({
-                    "text": button.button_text,
-                    "flow_id": int(button.flow_id) if button.flow_id else 0,
-                    "flow_action": button.flow_action,
-                    "navigate_screen": button.navigate_screen
-                })
-            elif button.button_type == "COPY_CODE":
-                button_data.update({
-                    "text": button.button_text,
-                    "example": [button.copy_code_example] if button.copy_code_example else [""]
-                })
+            # According to WhatsApp API docs, when sending template messages:
+            # - QUICK_REPLY buttons should include the payload
+            # - URL buttons should include the URL
+            # - PHONE_NUMBER buttons should include the phone_number
+            # - COPY_CODE buttons should include the example
+            
+            if button.button_type == "QUICK_REPLY" and button.payload:
+                button_data["payload"] = button.payload
+            elif button.button_type == "URL" and button.url:
+                button_data["url"] = button.url
+            elif button.button_type == "PHONE_NUMBER" and button.phone_number:
+                button_data["phone_number"] = button.phone_number
+            elif button.button_type == "COPY_CODE" and button.copy_code_example:
+                button_data["example"] = [button.copy_code_example]
                 
             buttons.append(button_data)
             
         return {
-            "type": "button",
-            "sub_type": "quick_reply",
-            "index": 0,
-            "parameters": buttons
+            "type": "BUTTONS",
+            "buttons": buttons
         }
 
 

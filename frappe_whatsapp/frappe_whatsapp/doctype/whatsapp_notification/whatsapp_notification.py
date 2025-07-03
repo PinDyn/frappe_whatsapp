@@ -245,6 +245,7 @@ class WhatsAppNotification(Document):
         }
         try:
             success = False
+            frappe.log_error("Final API Data", f"Data being sent to API: {json.dumps(data, indent=2)}")
             response = make_post_request(
                 f"{settings.url}/{settings.version}/{settings.phone_id}/messages",
                 headers=headers, data=json.dumps(data)

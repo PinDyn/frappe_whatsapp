@@ -35,7 +35,7 @@
    "fieldtype": "Data",
    "label": "Payload",
    "description": "Dynamic payload. Use {{field_name}} to reference document fields",
-   "reqd": 1
+   "mandatory_depends_on": "eval:doc.button_type == 'QUICK_REPLY'"
   },
   {
    "depends_on": "eval:doc.button_type == 'URL'",
@@ -43,7 +43,7 @@
    "fieldtype": "Data",
    "label": "URL",
    "description": "Dynamic URL. Use {{field_name}} to reference document fields",
-   "reqd": 1
+   "mandatory_depends_on": "eval:doc.button_type == 'URL'"
   },
   {
    "depends_on": "eval:doc.button_type == 'PHONE_NUMBER'",
@@ -51,7 +51,7 @@
    "fieldtype": "Data",
    "label": "Phone Number",
    "description": "Dynamic phone number. Use {{field_name}} to reference document fields",
-   "reqd": 1
+   "mandatory_depends_on": "eval:doc.button_type == 'PHONE_NUMBER'"
   },
 
   {
@@ -60,7 +60,7 @@
    "fieldtype": "Data",
    "label": "Copy Code Example",
    "description": "Dynamic code example. Use {{field_name}} to reference document fields",
-   "reqd": 1
+   "mandatory_depends_on": "eval:doc.button_type == 'COPY_CODE'"
   }
  ],
  "index_web_pages_for_search": 1,
