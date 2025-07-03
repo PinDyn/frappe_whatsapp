@@ -321,6 +321,29 @@ class WhatsAppNotification(Document):
 
         return number
 
+    def validate_button_parameters(self, template):
+        """Validate button parameters before sending message."""
+        if not template.buttons:
+            return
+            
+        if not self.button_parameters:
+            frappe.throw("Button parameters are required for templates with buttons. Please configure button parameters in the notification.")
+            
+        # Validate that we have button parameters for all template buttons
+        if len(self.button_parameters) != len(template.buttons):
+            frappe.throw(f"Template has {len(template.buttons)} buttons but notification has {len(self.button_parameters)} button parameters. Please configure parameters for all buttons.")
+            
+        # Validate required fields for each button parameter
+        for param in self.button_parameters:
+            if param.button_type == "QUICK_REPLY" and not param.payload:
+                frappe.throw(f"Payload is required for QUICK_REPLY button at index {param.button_index}")
+            elif param.button_type == "URL" and not param.url:
+                frappe.throw(f"URL is required for URL button at index {param.button_index}")
+            elif param.button_type == "PHONE_NUMBER" and not param.phone_number:
+                frappe.throw(f"Phone number is required for PHONE_NUMBER button at index {param.button_index}")
+            elif param.button_type == "COPY_CODE" and not param.copy_code_example:
+                frappe.throw(f"Copy code example is required for COPY_CODE button at index {param.button_index}")
+
     def get_template_buttons_component(self, template, doc=None, doc_data=None):
         """Get buttons component for template message."""
         frappe.log_error("Button Component Debug", f"Template buttons: {template.buttons}")
@@ -331,12 +354,8 @@ class WhatsAppNotification(Document):
             frappe.log_error("Button Validation", f"Validation failed: no buttons or too many buttons")
             return None
             
-        if not self.button_parameters:
-            frappe.throw("Button parameters are required for templates with buttons. Please configure button parameters in the notification.")
-            
-        # Validate that we have button parameters for all template buttons
-        if len(self.button_parameters) != len(template.buttons):
-            frappe.throw(f"Template has {len(template.buttons)} buttons but notification has {len(self.button_parameters)} button parameters. Please configure parameters for all buttons.")
+        # Validate button parameters before processing
+        self.validate_button_parameters(template)
             
         # Use the utility function to get processed buttons
         buttons = get_template_buttons_with_dynamic_values(template, self.button_parameters, doc, doc_data)

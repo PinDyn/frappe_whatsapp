@@ -105,29 +105,21 @@ def get_template_buttons_with_dynamic_values(template, button_parameters, doc=No
         if param.button_type == "QUICK_REPLY":
             # For QUICK_REPLY, notification parameter payload is required
             frappe.log_error("QUICK_REPLY Debug", f"Payload value: '{param.payload}'")
-            if not param.payload:
-                frappe.throw(f"Payload is required for QUICK_REPLY button at index {param.button_index}")
             payload = process_dynamic_payload(param.payload, doc, doc_data)
             button_data["payload"] = payload
             frappe.log_error("QUICK_REPLY Result", f"Final payload: '{payload}'")
         elif param.button_type == "URL":
             # For URL, notification parameter URL is required
             frappe.log_error("URL Debug", f"URL value: '{param.url}'")
-            if not param.url:
-                frappe.throw(f"URL is required for URL button at index {param.button_index}")
             url = process_dynamic_payload(param.url, doc, doc_data)
             button_data["url"] = url
             frappe.log_error("URL Result", f"Final URL: '{url}'")
         elif param.button_type == "PHONE_NUMBER":
             # For PHONE_NUMBER, notification parameter phone is required
-            if not param.phone_number:
-                frappe.throw(f"Phone number is required for PHONE_NUMBER button at index {param.button_index}")
             phone = process_dynamic_payload(param.phone_number, doc, doc_data)
             button_data["phone_number"] = phone
         elif param.button_type == "COPY_CODE":
             # For COPY_CODE, notification parameter example is required
-            if not param.copy_code_example:
-                frappe.throw(f"Copy code example is required for COPY_CODE button at index {param.button_index}")
             example = process_dynamic_payload(param.copy_code_example, doc, doc_data)
             button_data["example"] = [example]
         
