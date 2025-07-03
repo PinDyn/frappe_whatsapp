@@ -9,7 +9,7 @@ from frappe.utils.safe_exec import get_safe_globals, safe_exec
 from frappe.integrations.utils import make_post_request
 from frappe.desk.form.utils import get_pdf_link
 from frappe.utils import add_to_date, nowdate, datetime
-from frappe_whatsapp.utils.button_utils import get_template_buttons_with_dynamic_values, process_dynamic_payload
+from ...utils.button_utils import get_template_buttons_with_dynamic_values, process_dynamic_payload
 
 
 class WhatsAppNotification(Document):
