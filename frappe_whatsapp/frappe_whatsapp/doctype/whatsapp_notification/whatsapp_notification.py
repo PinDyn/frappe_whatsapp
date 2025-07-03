@@ -48,9 +48,8 @@ class WhatsAppNotification(Document):
             self.condition, get_safe_globals(), dict(doc=self)
         )
 
-        template = frappe.db.get_value(
-            "WhatsApp Templates", self.template,
-            fieldname='*'
+        template = frappe.get_doc(
+            "WhatsApp Templates", self.template
         )
 
         if template and template.language_code:
@@ -84,8 +83,8 @@ class WhatsAppNotification(Document):
             }
             self.content_type = template.get("header_type", "text").lower()
             
-            # Add buttons if template has them
-            if template.buttons:
+            # Add buttons if template has them and notification has button parameters
+            if template.buttons and self.button_parameters:
                 button_component = self.get_template_buttons_component(template)
                 if button_component:
                     data["template"]["components"].append(button_component)
