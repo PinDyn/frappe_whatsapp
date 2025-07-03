@@ -106,9 +106,8 @@ class WhatsAppNotification(Document):
             ):
                 return
 
-        template = default_template or frappe.db.get_value(
-            "WhatsApp Templates", self.template,
-            fieldname='*'
+        template = default_template or frappe.get_doc(
+            "WhatsApp Templates", self.template
         )
 
         if template:
@@ -221,10 +220,14 @@ class WhatsAppNotification(Document):
             self.content_type = template.header_type.lower()
 
             # Add buttons if template has them
+            frappe.log_error("Template Buttons Debug", f"Template {template.name} has buttons: {bool(template.buttons)}")
             if template.buttons:
+                frappe.log_error("Button Count", f"Number of buttons: {len(template.buttons)}")
                 button_component = self.get_template_buttons_component(template, doc, doc_data)
+                frappe.log_error("Button Component", f"Button component created: {button_component}")
                 if button_component:
                     data["template"]["components"].append(button_component)
+                    frappe.log_error("Components Updated", f"Final components: {data['template']['components']}")
 
             self.notify(data, doc_data)
 
