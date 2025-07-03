@@ -283,7 +283,9 @@ def fetch():
             doc.id = template["id"]
 
             # update components
+            frappe.log_error("Template Processing", f"Processing template {doc.name} with {len(template.get('components', []))} components")
             for component in template["components"]:
+                frappe.log_error("Component Type", f"Processing component type: {component.get('type')}")
 
                 # update header
                 if component["type"] == "HEADER":
@@ -306,6 +308,9 @@ def fetch():
 
                 # update buttons
                 elif component["type"] == "BUTTONS":
+                    # Debug: Log the button component structure
+                    frappe.log_error("Button Component", f"Processing buttons for template {doc.name}: {component}")
+                    
                     # Clear existing buttons first
                     if flags:
                         # Delete existing buttons for this template
@@ -315,7 +320,12 @@ def fetch():
                         """, doc.name)
                     
                     # Add new buttons
-                    for button in component.get("buttons", []):
+                    buttons_list = component.get("buttons", [])
+                    frappe.log_error("Button Count", f"Found {len(buttons_list)} buttons")
+                    
+                    for idx, button in enumerate(buttons_list):
+                        frappe.log_error("Button Details", f"Processing button {idx}: {button}")
+                        
                         button_doc = frappe.new_doc("WhatsApp Template Buttons")
                         button_doc.button_text = button.get("text", "")
                         button_doc.button_type = button.get("type", "")
@@ -330,8 +340,13 @@ def fetch():
                         button_doc.parent = doc.name
                         button_doc.parenttype = "WhatsApp Templates"
                         button_doc.parentfield = "buttons"
-                        button_doc.idx = len(doc.buttons) + 1
-                        button_doc.db_insert()
+                        button_doc.idx = idx + 1
+                        
+                        try:
+                            button_doc.db_insert()
+                            frappe.log_error("Button Success", f"Successfully inserted button: {button_doc.button_text}")
+                        except Exception as e:
+                            frappe.log_error("Button Error", f"Failed to insert button: {e}")
 
             # if document exists update else insert
             # used db_update and db_insert to ignore hooks
