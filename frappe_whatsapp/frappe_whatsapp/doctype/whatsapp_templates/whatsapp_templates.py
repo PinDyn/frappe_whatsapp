@@ -101,6 +101,12 @@ class WhatsAppTemplates(Document):
         if self.footer:
             data["components"].append({"type": "FOOTER", "text": self.footer})
 
+        # add buttons if any
+        if self.buttons:
+            button_component = self.get_buttons_component()
+            if button_component:
+                data["components"].append(button_component)
+
         try:
             response = make_post_request(
                 f"{self._url}/{self._version}/{self._business_id}/message_templates",
@@ -134,6 +140,13 @@ class WhatsAppTemplates(Document):
             data["components"].append(self.get_header())
         if self.footer:
             data["components"].append({"type": "FOOTER", "text": self.footer})
+        
+        # add buttons if any
+        if self.buttons:
+            button_component = self.get_buttons_component()
+            if button_component:
+                data["components"].append(button_component)
+                
         try:
             # post template to meta for update
             make_post_request(
@@ -198,6 +211,40 @@ class WhatsAppTemplates(Document):
 
         return header
 
+    def get_buttons_component(self):
+        """Get buttons component for template."""
+        if not self.buttons or len(self.buttons) > 3:
+            return None
+            
+        buttons = []
+        for button in self.buttons:
+            button_data = {
+                "type": button.button_type
+            }
+            
+            if button.button_type == "QUICK_REPLY":
+                button_data.update({
+                    "text": button.button_text,
+                    "payload": button.payload
+                })
+            elif button.button_type == "URL":
+                button_data.update({
+                    "text": button.button_text,
+                    "url": button.url
+                })
+            elif button.button_type == "PHONE_NUMBER":
+                button_data.update({
+                    "text": button.button_text,
+                    "phone_number": button.phone_number
+                })
+                
+            buttons.append(button_data)
+            
+        return {
+            "type": "BUTTONS",
+            "buttons": buttons
+        }
+
 
 @frappe.whitelist()
 def fetch():
@@ -256,6 +303,35 @@ def fetch():
                         doc.sample_values = ",".join(
                             component["example"]["body_text"][0]
                         )
+
+                # update buttons
+                elif component["type"] == "BUTTONS":
+                    # Clear existing buttons first
+                    if flags:
+                        # Delete existing buttons for this template
+                        frappe.db.sql("""
+                            DELETE FROM `tabWhatsApp Template Buttons` 
+                            WHERE parent = %s AND parenttype = 'WhatsApp Templates'
+                        """, doc.name)
+                    
+                    # Add new buttons
+                    for button in component.get("buttons", []):
+                        button_doc = frappe.new_doc("WhatsApp Template Buttons")
+                        button_doc.button_text = button.get("text", "")
+                        button_doc.button_type = button.get("type", "")
+                        
+                        if button.get("type") == "QUICK_REPLY":
+                            button_doc.payload = button.get("payload", "")
+                        elif button.get("type") == "URL":
+                            button_doc.url = button.get("url", "")
+                        elif button.get("type") == "PHONE_NUMBER":
+                            button_doc.phone_number = button.get("phone_number", "")
+                        
+                        button_doc.parent = doc.name
+                        button_doc.parenttype = "WhatsApp Templates"
+                        button_doc.parentfield = "buttons"
+                        button_doc.idx = len(doc.buttons) + 1
+                        button_doc.db_insert()
 
             # if document exists update else insert
             # used db_update and db_insert to ignore hooks

@@ -109,6 +109,12 @@ class WhatsAppMessage(Document):
                     }]
                 })
 
+        # Add buttons if template has them
+        if template.buttons:
+            button_component = self.get_template_buttons_component(template)
+            if button_component:
+                data["template"]["components"].append(button_component)
+
         self.notify(data)
 
     def notify(self, data):
@@ -151,6 +157,41 @@ class WhatsAppMessage(Document):
 
         return number
 
+    def get_template_buttons_component(self, template):
+        """Get buttons component for template message."""
+        if not template.buttons or len(template.buttons) > 3:
+            return None
+            
+        buttons = []
+        for button in template.buttons:
+            button_data = {
+                "type": button.button_type
+            }
+            
+            if button.button_type == "QUICK_REPLY":
+                button_data.update({
+                    "text": button.button_text,
+                    "payload": button.payload
+                })
+            elif button.button_type == "URL":
+                button_data.update({
+                    "text": button.button_text,
+                    "url": button.url
+                })
+            elif button.button_type == "PHONE_NUMBER":
+                button_data.update({
+                    "text": button.button_text,
+                    "phone_number": button.phone_number
+                })
+                
+            buttons.append(button_data)
+            
+        return {
+            "type": "button",
+            "sub_type": "quick_reply",
+            "index": 0,
+            "parameters": buttons
+        }
 
 
 def on_doctype_update():

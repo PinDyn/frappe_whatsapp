@@ -1,0 +1,78 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-01-27 10:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "button_text",
+  "button_type",
+  "payload",
+  "url",
+  "phone_number",
+  "column_break_1"
+ ],
+ "fields": [
+  {
+   "fieldname": "button_text",
+   "fieldtype": "Data",
+   "label": "Button Text",
+   "reqd": 1
+  },
+  {
+   "fieldname": "button_type",
+   "fieldtype": "Select",
+   "label": "Button Type",
+   "options": "QUICK_REPLY\nURL\nPHONE_NUMBER",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.button_type == 'QUICK_REPLY'",
+   "fieldname": "payload",
+   "fieldtype": "Data",
+   "label": "Payload",
+   "description": "Custom payload that will be sent when button is clicked"
+  },
+  {
+   "depends_on": "eval:doc.button_type == 'URL'",
+   "fieldname": "url",
+   "fieldtype": "Data",
+   "label": "URL",
+   "description": "URL to open when button is clicked"
+  },
+  {
+   "depends_on": "eval:doc.button_type == 'PHONE_NUMBER'",
+   "fieldname": "phone_number",
+   "fieldtype": "Data",
+   "label": "Phone Number",
+   "description": "Phone number to call when button is clicked"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-01-27 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Frappe Whatsapp",
+ "name": "WhatsApp Template Buttons",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+} 

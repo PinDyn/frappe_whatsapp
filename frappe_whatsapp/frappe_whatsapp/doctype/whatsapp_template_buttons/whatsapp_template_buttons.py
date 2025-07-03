@@ -1,0 +1,19 @@
+# Copyright (c) 2025, Shridhar Patil and contributors
+# For license information, please see license.txt
+import frappe
+from frappe.model.document import Document
+
+
+class WhatsAppTemplateButtons(Document):
+    """WhatsApp Template Buttons."""
+    
+    def validate(self):
+        """Validate button configuration."""
+        if self.button_type == "QUICK_REPLY" and not self.payload:
+            frappe.throw("Payload is required for Quick Reply buttons")
+        
+        if self.button_type == "URL" and not self.url:
+            frappe.throw("URL is required for URL buttons")
+            
+        if self.button_type == "PHONE_NUMBER" and not self.phone_number:
+            frappe.throw("Phone number is required for Phone Number buttons") 

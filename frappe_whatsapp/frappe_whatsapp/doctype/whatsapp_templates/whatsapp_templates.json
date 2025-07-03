@@ -6,7 +6,7 @@
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
- "field_order": [
+   "field_order": [
   "template_name",
   "actual_name",
   "column_break_bthp",
@@ -26,7 +26,9 @@
   "header",
   "sample",
   "column_break_tbvf",
-  "footer"
+  "footer",
+  "section_break_buttons",
+  "buttons"
  ],
  "fields": [
   {
@@ -146,6 +148,18 @@
    "fieldname": "field_names",
    "fieldtype": "Small Text",
    "label": "Field names"
+  },
+  {
+   "fieldname": "section_break_buttons",
+   "fieldtype": "Section Break",
+   "label": "Template Buttons"
+  },
+  {
+   "description": "Add buttons to your WhatsApp template (max 3 buttons)",
+   "fieldname": "buttons",
+   "fieldtype": "Table",
+   "label": "Buttons",
+   "options": "WhatsApp Template Buttons"
   }
  ],
  "index_web_pages_for_search": 1,
