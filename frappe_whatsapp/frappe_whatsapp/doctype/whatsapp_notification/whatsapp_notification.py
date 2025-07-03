@@ -223,10 +223,11 @@ class WhatsAppNotification(Document):
             frappe.log_error("Notification Button Parameters", f"Notification has button parameters: {bool(self.button_parameters)}")
             if template.buttons and self.button_parameters:
                 frappe.log_error("Button Count", f"Number of template buttons: {len(template.buttons)}, Number of button parameters: {len(self.button_parameters)}")
-                button_component = self.get_template_buttons_component(template, doc, doc_data)
-                frappe.log_error("Button Component", f"Button component created: {button_component}")
-                if button_component:
-                    data["template"]["components"].append(button_component)
+                button_components = self.get_template_buttons_component(template, doc, doc_data)
+                frappe.log_error("Button Components", f"Button components created: {button_components}")
+                if button_components:
+                    for component in button_components:
+                        data["template"]["components"].append(component)
                     frappe.log_error("Components Updated", f"Final components: {data['template']['components']}")
 
             self.notify(data, doc_data)
@@ -289,8 +290,15 @@ class WhatsAppNotification(Document):
         except Exception as e:
             error_message = str(e)
             if frappe.flags.integration_request:
-                response = frappe.flags.integration_request.json()['error']
-                error_message = response.get('Error', response.get("message"))
+                try:
+                    response_data = frappe.flags.integration_request.json()
+                    if 'error' in response_data:
+                        response = response_data['error']
+                        error_message = response.get('Error', response.get("message"))
+                    else:
+                        error_message = str(response_data)
+                except:
+                    error_message = str(e)
 
             frappe.msgprint(
                 f"Failed to trigger whatsapp message: {error_message}",
@@ -301,7 +309,10 @@ class WhatsAppNotification(Document):
             if not success:
                 meta = {"error": error_message}
             else:
-                meta = frappe.flags.integration_request.json()
+                try:
+                    meta = frappe.flags.integration_request.json()
+                except:
+                    meta = {"success": True}
             frappe.get_doc({
                 "doctype": "WhatsApp Notification Log",
                 "template": self.template,
@@ -363,11 +374,61 @@ class WhatsAppNotification(Document):
         frappe.log_error("Processed Buttons", f"Processed buttons: {buttons}")
             
         # According to WhatsApp API docs, when sending template messages with buttons,
-        # the button component should match the template structure, not use parameters
-        return {
-            "type": "BUTTONS",
-            "buttons": buttons
-        }
+        # each button should be a separate component with type: "button"
+        button_components = []
+        
+        for i, button in enumerate(buttons):
+            if button.get("type") == "QUICK_REPLY":
+                button_components.append({
+                    "type": "button",
+                    "sub_type": "quick_reply",
+                    "index": str(i),
+                    "parameters": [
+                        {
+                            "type": "payload",
+                            "payload": button.get("payload", "")
+                        }
+                    ]
+                })
+            elif button.get("type") == "URL":
+                button_components.append({
+                    "type": "button",
+                    "sub_type": "url",
+                    "index": str(i),
+                    "parameters": [
+                        {
+                            "type": "text",
+                            "text": button.get("url", "")
+                        }
+                    ]
+                })
+            elif button.get("type") == "PHONE_NUMBER":
+                button_components.append({
+                    "type": "button",
+                    "sub_type": "phone_number",
+                    "index": str(i),
+                    "parameters": [
+                        {
+                            "type": "text",
+                            "text": button.get("phone_number", "")
+                        }
+                    ]
+                })
+            elif button.get("type") == "COPY_CODE":
+                button_components.append({
+                    "type": "button",
+                    "sub_type": "copy_code",
+                    "index": str(i),
+                    "parameters": [
+                        {
+                            "type": "text",
+                            "text": button.get("example", [""])[0] if button.get("example") else ""
+                        }
+                    ]
+                })
+        
+        # Return all button components
+        return button_components if button_components else None
 
     def get_documents_for_today(self):
         """get list of documents that will be triggered today"""

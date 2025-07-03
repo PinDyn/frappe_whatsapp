@@ -104,7 +104,8 @@ def get_template_buttons_with_dynamic_values(template, button_parameters, doc=No
         
         if param.button_type == "QUICK_REPLY":
             # For QUICK_REPLY, notification parameter payload is required
-            frappe.log_error("QUICK_REPLY Debug", f"Payload value: '{param.payload}'")
+            frappe.log_error("QUICK_REPLY Debug", f"Payload value: '{param.payload}', Type: {type(param.payload)}")
+            frappe.log_error("QUICK_REPLY Debug", f"Param fields: {param.as_dict()}")
             payload = process_dynamic_payload(param.payload, doc, doc_data)
             button_data["payload"] = payload
             frappe.log_error("QUICK_REPLY Result", f"Final payload: '{payload}'")
