@@ -276,11 +276,13 @@ class WhatsAppTemplates(Document):
             if card.header_type == "TEXT":
                 card_data["components"].append({
                     "type": "header",
+                    "format": "text",
                     "text": card.header_text
                 })
             elif card.header_type in ["IMAGE", "VIDEO"]:
                 card_data["components"].append({
                     "type": "header",
+                    "format": card.header_type.lower(),
                     "parameters": [
                         {
                             "type": card.header_type.lower(),
