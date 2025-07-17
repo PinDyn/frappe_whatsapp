@@ -134,12 +134,23 @@ class WhatsAppTemplates(Document):
             self.status = response["status"]
             self.db_update()
         except Exception as e:
-            res = frappe.flags.integration_request.json()["error"]
-            error_message = res.get("error_user_msg", res.get("message"))
-            frappe.throw(
-                msg=error_message,
-                title=res.get("error_user_title", "Error"),
-            )
+            # Debug: Log the error response from Meta
+            if frappe.flags.integration_request:
+                try:
+                    response_data = frappe.flags.integration_request.json()
+                    frappe.log_error("Meta Error Response", f"Full error response: {json.dumps(response_data, indent=2)}")
+                    if 'error' in response_data:
+                        res = response_data['error']
+                        error_message = res.get("error_user_msg", res.get("message"))
+                        frappe.throw(
+                            msg=error_message,
+                            title=res.get("error_user_title", "Error"),
+                        )
+                except Exception as log_error:
+                    frappe.log_error("Error Logging Failed", f"Could not parse error response: {log_error}")
+            
+            # Fallback error handling
+            frappe.throw(f"Failed to create template: {str(e)}")
 
     def update_template(self):
         """Update template to meta."""
