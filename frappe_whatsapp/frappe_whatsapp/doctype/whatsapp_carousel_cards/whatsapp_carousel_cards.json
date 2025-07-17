@@ -1,0 +1,78 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:card_index",
+ "creation": "2024-12-19 10:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "card_index",
+  "header_type",
+  "header_content",
+  "header_text",
+  "body_text",
+  "section_break_buttons",
+  "buttons"
+ ],
+ "fields": [
+  {
+   "fieldname": "card_index",
+   "fieldtype": "Int",
+   "label": "Card Index",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "header_type",
+   "fieldtype": "Select",
+   "label": "Header Type",
+   "options": "IMAGE\nVIDEO\nTEXT",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.header_type == 'IMAGE' || doc.header_type == 'VIDEO'",
+   "fieldname": "header_content",
+   "fieldtype": "Data",
+   "label": "Header Content",
+   "description": "URL for media or asset handle"
+  },
+  {
+   "depends_on": "eval:doc.header_type == 'TEXT'",
+   "fieldname": "header_text",
+   "fieldtype": "Data",
+   "label": "Header Text",
+   "description": "Text header (max 60 characters)"
+  },
+  {
+   "fieldname": "body_text",
+   "fieldtype": "Text",
+   "label": "Body Text",
+   "description": "Card body text with variables like {{1}}, {{2}} (max 160 characters)"
+  },
+  {
+   "fieldname": "section_break_buttons",
+   "fieldtype": "Section Break",
+   "label": "Card Buttons"
+  },
+  {
+   "description": "Add buttons to this card (max 2 buttons per card)",
+   "fieldname": "buttons",
+   "fieldtype": "Table",
+   "label": "Buttons",
+   "options": "WhatsApp Template Buttons"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2024-12-19 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Frappe Whatsapp",
+ "name": "WhatsApp Carousel Cards",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+} 

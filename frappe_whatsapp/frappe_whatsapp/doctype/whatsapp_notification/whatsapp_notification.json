@@ -6,7 +6,7 @@
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
- "field_order": [
+   "field_order": [
   "notification_name",
   "notification_type",
   "reference_doctype",
@@ -30,6 +30,8 @@
   "fields",
   "button_parameters_section",
   "button_parameters",
+  "carousel_parameters_section",
+  "carousel_parameters",
   "property_section",
   "set_property_after_alert",
   "property_value",
@@ -133,6 +135,20 @@
    "fieldtype": "Table",
    "label": "Button Parameters",
    "options": "WhatsApp Button Parameters"
+  },
+  {
+   "fieldname": "carousel_parameters_section",
+   "fieldtype": "Section Break",
+   "label": "Carousel Parameters",
+   "depends_on": "eval:doc.template && frappe.db.get_value('WhatsApp Templates', doc.template, 'template_type') == 'Carousel'"
+  },
+  {
+   "description": "Configure carousel parameters for carousel templates. Use {{field_name}} for dynamic values.",
+   "fieldname": "carousel_parameters",
+   "fieldtype": "Table",
+   "label": "Carousel Parameters",
+   "options": "WhatsApp Carousel Parameters",
+   "depends_on": "eval:doc.template && frappe.db.get_value('WhatsApp Templates', doc.template, 'template_type') == 'Carousel'"
   },
   {
    "fieldname": "section_break_11",

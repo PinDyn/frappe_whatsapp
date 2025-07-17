@@ -13,6 +13,7 @@
   "status",
   "id",
   "section_break_fxqh",
+  "template_type",
   "template",
   "sample_values",
   "for_doctype",
@@ -28,7 +29,9 @@
   "column_break_tbvf",
   "footer",
   "section_break_buttons",
-  "buttons"
+  "buttons",
+  "section_break_carousel",
+  "carousel_cards"
  ],
  "fields": [
   {
@@ -37,6 +40,13 @@
    "label": "Template Label",
    "reqd": 1,
    "unique": 1
+  },
+  {
+   "fieldname": "template_type",
+   "fieldtype": "Select",
+   "label": "Template Type",
+   "options": "Template\nCarousel",
+   "default": "Template"
   },
   {
    "fieldname": "template",
@@ -160,6 +170,20 @@
    "fieldtype": "Table",
    "label": "Buttons",
    "options": "WhatsApp Template Buttons"
+  },
+  {
+   "fieldname": "section_break_carousel",
+   "fieldtype": "Section Break",
+   "label": "Carousel Configuration",
+   "depends_on": "eval:doc.template_type == 'Carousel'"
+  },
+  {
+   "description": "Configure carousel cards for this template",
+   "fieldname": "carousel_cards",
+   "fieldtype": "Table",
+   "label": "Carousel Cards",
+   "options": "WhatsApp Carousel Cards",
+   "depends_on": "eval:doc.template_type == 'Carousel'"
   }
  ],
  "index_web_pages_for_search": 1,

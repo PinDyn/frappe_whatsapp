@@ -9,6 +9,7 @@ import magic
 from frappe.model.document import Document
 from frappe.integrations.utils import make_post_request, make_request
 from frappe.desk.form.utils import get_pdf_link
+from ..utils.carousel_utils import validate_carousel_template, build_carousel_payload
 
 
 class WhatsAppTemplates(Document):
@@ -22,6 +23,12 @@ class WhatsAppTemplates(Document):
         if self.header_type in ["IMAGE", "DOCUMENT"] and self.sample:
             self.get_session_id()
             self.get_media_id()
+
+        # Validate carousel template if it's a carousel type
+        if self.template_type == "Carousel":
+            is_valid, error = validate_carousel_template(self)
+            if not is_valid:
+                frappe.throw(f"Carousel template validation failed: {error}")
 
         if not self.is_new():
             self.update_template()
@@ -101,11 +108,17 @@ class WhatsAppTemplates(Document):
         if self.footer:
             data["components"].append({"type": "FOOTER", "text": self.footer})
 
-        # add buttons if any
-        if self.buttons:
-            button_component = self.get_buttons_component()
-            if button_component:
-                data["components"].append(button_component)
+        # Handle carousel templates
+        if self.template_type == "Carousel":
+            carousel_component = self.get_carousel_component()
+            if carousel_component:
+                data["components"].append(carousel_component)
+        else:
+            # add buttons if any
+            if self.buttons:
+                button_component = self.get_buttons_component()
+                if button_component:
+                    data["components"].append(button_component)
 
         try:
             response = make_post_request(
@@ -250,6 +263,99 @@ class WhatsAppTemplates(Document):
             "buttons": buttons
         }
 
+    def get_carousel_component(self):
+        """Build carousel component for template creation."""
+        if not self.carousel_cards:
+            return None
+        cards = []
+        for card in self.carousel_cards:
+            card_data = {
+                "card_index": card.card_index,
+                "components": []
+            }
+            # Header
+            if card.header_type == "TEXT":
+                card_data["components"].append({
+                    "type": "header",
+                    "text": card.header_text
+                })
+            elif card.header_type in ["IMAGE", "VIDEO"]:
+                card_data["components"].append({
+                    "type": "header",
+                    "parameters": [
+                        {
+                            "type": card.header_type.lower(),
+                            card.header_type.lower(): {
+                                "link": card.header_content
+                            }
+                        }
+                    ]
+                })
+            # Body
+            if card.body_text:
+                card_data["components"].append({
+                    "type": "body",
+                    "text": card.body_text
+                })
+            # Buttons
+            if card.buttons:
+                buttons = []
+                for button in card.buttons:
+                    button_data = {
+                        "type": button.button_type,
+                        "text": button.button_text
+                    }
+                    if button.button_type == "URL" and button.url:
+                        button_data["url"] = button.url
+                    elif button.button_type == "PHONE_NUMBER" and button.phone_number:
+                        button_data["phone_number"] = button.phone_number
+                    elif button.button_type == "COPY_CODE" and button.copy_code_example:
+                        button_data["example"] = [button.copy_code_example]
+                    elif button.button_type == "FLOW" and button.flow_id:
+                        button_data["flow_id"] = button.flow_id
+                        if button.flow_action:
+                            button_data["flow_action"] = button.flow_action
+                        if button.navigate_screen:
+                            button_data["navigate_screen"] = button.navigate_screen
+                    buttons.append(button_data)
+                card_data["components"].append({
+                    "type": "buttons",
+                    "buttons": buttons
+                })
+            cards.append(card_data)
+        return {
+            "type": "carousel",
+            "cards": cards
+        }
+
+    @frappe.whitelist()
+    def preview(self):
+        """Return a preview of the carousel template structure."""
+        if self.template_type != "Carousel":
+            return {"error": "Not a carousel template"}
+        preview = {
+            "template_name": self.template_name,
+            "language": self.language_code,
+            "category": self.category,
+            "cards": []
+        }
+        for card in self.carousel_cards:
+            card_info = {
+                "card_index": card.card_index,
+                "header_type": card.header_type,
+                "header_content": card.header_content if card.header_type in ["IMAGE", "VIDEO"] else card.header_text,
+                "body_text": card.body_text,
+                "buttons": []
+            }
+            if card.buttons:
+                for button in card.buttons:
+                    card_info["buttons"].append({
+                        "type": button.button_type,
+                        "text": button.button_text
+                    })
+            preview["cards"].append(card_info)
+        return preview
+
 
 @frappe.whitelist()
 def fetch():
@@ -294,6 +400,11 @@ def fetch():
             # update components
             frappe.log_error("Template Processing", f"Processing template {doc.name} with {len(template.get('components', []))} components")
             frappe.log_error("All Components", f"All components for {doc.name}: {template.get('components', [])}")
+
+            # Reset carousel fields
+            doc.template_type = "Template"
+            doc.carousel_cards = []
+
             for component in template["components"]:
                 frappe.log_error("Component Type", f"Processing component type: {component.get('type')} for template {doc.name}")
                 frappe.log_error("Component Details", f"Component details: {component}")
@@ -374,20 +485,47 @@ def fetch():
                         except Exception as e:
                             frappe.log_error("Button Error", f"Failed to insert button: {e}")
 
-            # if document exists update else insert
-            # used db_update and db_insert to ignore hooks
-            if flags:
-                doc.db_update()
-            else:
-                doc.db_insert()
-            frappe.db.commit()
-
+                # update carousel
+                elif component["type"] == "CAROUSEL":
+                    doc.template_type = "Carousel"
+                    # Clear existing carousel cards
+                    if flags:
+                        frappe.db.sql("""
+                            DELETE FROM `tabWhatsApp Carousel Cards` 
+                            WHERE parent = %s AND parenttype = 'WhatsApp Templates'
+                        """, doc.name)
+                    cards_list = component.get("cards", [])
+                    for card in cards_list:
+                        card_doc = frappe.new_doc("WhatsApp Carousel Cards")
+                        card_doc.card_index = card.get("card_index", 0)
+                        # Parse card components
+                        for c in card.get("components", []):
+                            if c.get("type") == "header":
+                                if "text" in c:
+                                    card_doc.header_type = "TEXT"
+                                    card_doc.header_text = c["text"]
+                                elif "parameters" in c:
+                                    param = c["parameters"][0]
+                                    if param["type"] == "image":
+                                        card_doc.header_type = "IMAGE"
+                                        card_doc.header_content = param["image"]["link"]
+                                    elif param["type"] == "video":
+                                        card_doc.header_type = "VIDEO"
+                                        card_doc.header_content = param["video"]["link"]
+                            elif c.get("type") == "body":
+                                if "text" in c:
+                                    card_doc.body_text = c["text"]
+                        card_doc.parent = doc.name
+                        card_doc.parenttype = "WhatsApp Templates"
+                        card_doc.parentfield = "carousel_cards"
+                        card_doc.idx = card.get("card_index", 0) + 1
+                        try:
+                            card_doc.db_insert()
+                            frappe.log_error("Carousel Card Success", f"Inserted card {card_doc.card_index}")
+                        except Exception as e:
+                            frappe.log_error("Carousel Card Error", f"Failed to insert card: {e}")
+            doc.save(ignore_permissions=True)
+        frappe.msgprint("Templates fetched and updated successfully!")
     except Exception as e:
-        res = frappe.flags.integration_request.json()["error"]
-        error_message = res.get("error_user_msg", res.get("message"))
-        frappe.throw(
-            msg=error_message,
-            title=res.get("error_user_title", "Error"),
-        )
-
-    return "Successfully fetched templates from meta"
+        frappe.log_error("Fetch Error", str(e))
+        frappe.throw(f"Failed to fetch templates: {e}")

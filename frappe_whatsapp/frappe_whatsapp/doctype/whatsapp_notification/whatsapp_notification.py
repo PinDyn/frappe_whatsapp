@@ -10,6 +10,7 @@ from frappe.integrations.utils import make_post_request
 from frappe.desk.form.utils import get_pdf_link
 from frappe.utils import add_to_date, nowdate, datetime
 from ...utils.button_utils import get_template_buttons_with_dynamic_values, process_dynamic_payload
+from ...utils.carousel_utils import build_carousel_payload, validate_carousel_template
 
 
 class WhatsAppNotification(Document):
@@ -83,11 +84,24 @@ class WhatsAppNotification(Document):
             }
             self.content_type = template.get("header_type", "text").lower()
             
-            # Add buttons if template has them and notification has button parameters
-            if template.buttons and self.button_parameters:
-                button_component = self.get_template_buttons_component(template)
-                if button_component:
-                    data["template"]["components"].append(button_component)
+            # Handle carousel templates
+            if template.template_type == "Carousel":
+                # Validate carousel template
+                is_valid, error = validate_carousel_template(template)
+                if not is_valid:
+                    frappe.log_error(f"Carousel template validation failed: {error}", "WhatsApp Carousel")
+                    return
+                
+                # Build carousel payload
+                carousel_component = build_carousel_payload(template, self.carousel_parameters)
+                if carousel_component:
+                    data["template"]["components"].append(carousel_component)
+            else:
+                # Handle regular template buttons
+                if template.buttons and self.button_parameters:
+                    button_component = self.get_template_buttons_component(template)
+                    if button_component:
+                        data["template"]["components"].append(button_component)
                     
             self.notify(data)
 
@@ -218,12 +232,25 @@ class WhatsAppNotification(Document):
                 })
             self.content_type = template.header_type.lower()
 
-            # Add buttons if template has them and notification has button parameters
-            if template.buttons and self.button_parameters:
-                button_components = self.get_template_buttons_component(template, doc, doc_data)
-                if button_components:
-                    for component in button_components:
-                        data["template"]["components"].append(component)
+            # Handle carousel templates
+            if template.template_type == "Carousel":
+                # Validate carousel template
+                is_valid, error = validate_carousel_template(template)
+                if not is_valid:
+                    frappe.log_error(f"Carousel template validation failed: {error}", "WhatsApp Carousel")
+                    return
+                
+                # Build carousel payload
+                carousel_component = build_carousel_payload(template, self.carousel_parameters, doc, doc_data)
+                if carousel_component:
+                    data["template"]["components"].append(carousel_component)
+            else:
+                # Handle regular template buttons
+                if template.buttons and self.button_parameters:
+                    button_components = self.get_template_buttons_component(template, doc, doc_data)
+                    if button_components:
+                        for component in button_components:
+                            data["template"]["components"].append(component)
 
             self.notify(data, doc_data)
 
