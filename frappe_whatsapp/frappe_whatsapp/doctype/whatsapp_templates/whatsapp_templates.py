@@ -121,6 +121,8 @@ class WhatsAppTemplates(Document):
                     data["components"].append(button_component)
 
         try:
+            # Debug: Log the data being sent
+            frappe.log_error("Carousel Template Data", f"Data being sent to Meta: {json.dumps(data, indent=2)}")
             response = make_post_request(
                 f"{self._url}/{self._version}/{self._business_id}/message_templates",
                 headers=self._headers,
