@@ -9,8 +9,7 @@ import magic
 from frappe.model.document import Document
 from frappe.integrations.utils import make_post_request, make_request
 from frappe.desk.form.utils import get_pdf_link
-# Import carousel utils only when needed to avoid circular imports
-# from ...utils.carousel_utils import validate_carousel_template, build_carousel_payload
+from ...utils.carousel_utils import validate_carousel_template, build_carousel_payload
 
 
 class WhatsAppTemplates(Document):
@@ -27,8 +26,9 @@ class WhatsAppTemplates(Document):
 
         # Validate carousel template if it's a carousel type
         if self.template_type == "Carousel":
-            # TODO: Add carousel validation after migration
-            pass
+            is_valid, error = validate_carousel_template(self)
+            if not is_valid:
+                frappe.throw(f"Carousel template validation failed: {error}")
 
         if not self.is_new():
             self.update_template()
@@ -110,8 +110,9 @@ class WhatsAppTemplates(Document):
 
         # Handle carousel templates
         if self.template_type == "Carousel":
-            # TODO: Add carousel component after migration
-            pass
+            carousel_component = self.get_carousel_component()
+            if carousel_component:
+                data["components"].append(carousel_component)
         else:
             # add buttons if any
             if self.buttons:
@@ -486,9 +487,43 @@ def fetch():
 
                 # update carousel
                 elif component["type"] == "CAROUSEL":
-                    # TODO: Add carousel parsing after migration
                     doc.template_type = "Carousel"
-                    pass
+                    # Clear existing carousel cards
+                    if flags:
+                        frappe.db.sql("""
+                            DELETE FROM `tabWhatsApp Carousel Cards` 
+                            WHERE parent = %s AND parenttype = 'WhatsApp Templates'
+                        """, doc.name)
+                    cards_list = component.get("cards", [])
+                    for card in cards_list:
+                        card_doc = frappe.new_doc("WhatsApp Carousel Cards")
+                        card_doc.card_index = card.get("card_index", 0)
+                        # Parse card components
+                        for c in card.get("components", []):
+                            if c.get("type") == "header":
+                                if "text" in c:
+                                    card_doc.header_type = "TEXT"
+                                    card_doc.header_text = c["text"]
+                                elif "parameters" in c:
+                                    param = c["parameters"][0]
+                                    if param["type"] == "image":
+                                        card_doc.header_type = "IMAGE"
+                                        card_doc.header_content = param["image"]["link"]
+                                    elif param["type"] == "video":
+                                        card_doc.header_type = "VIDEO"
+                                        card_doc.header_content = param["video"]["link"]
+                            elif c.get("type") == "body":
+                                if "text" in c:
+                                    card_doc.body_text = c["text"]
+                        card_doc.parent = doc.name
+                        card_doc.parenttype = "WhatsApp Templates"
+                        card_doc.parentfield = "carousel_cards"
+                        card_doc.idx = card.get("card_index", 0) + 1
+                        try:
+                            card_doc.db_insert()
+                            frappe.log_error("Carousel Card Success", f"Inserted card {card_doc.card_index}")
+                        except Exception as e:
+                            frappe.log_error("Carousel Card Error", f"Failed to insert card: {e}")
             doc.save(ignore_permissions=True)
         frappe.msgprint("Templates fetched and updated successfully!")
     except Exception as e:
