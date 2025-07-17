@@ -12,7 +12,9 @@
   "url",
   "phone_number",
   "copy_code_example",
-  "flow_token",
+  "flow_id",
+  "flow_action",
+  "navigate_screen",
   "column_break_1"
  ],
  "fields": [
@@ -54,10 +56,24 @@
   },
   {
    "depends_on": "eval:doc.button_type == 'FLOW'",
-   "fieldname": "flow_token",
+   "fieldname": "flow_id",
    "fieldtype": "Data",
-   "label": "Example Flow Token",
-   "description": "Example Flow Token for template creation. The actual Flow Token will be specified in notification parameters when sending messages."
+   "label": "Flow ID",
+   "description": "Flow ID from Meta template configuration"
+  },
+  {
+   "depends_on": "eval:doc.button_type == 'FLOW'",
+   "fieldname": "flow_action",
+   "fieldtype": "Data",
+   "label": "Flow Action",
+   "description": "Flow action from Meta template configuration"
+  },
+  {
+   "depends_on": "eval:doc.button_type == 'FLOW'",
+   "fieldname": "navigate_screen",
+   "fieldtype": "Data",
+   "label": "Navigate Screen",
+   "description": "Navigate screen from Meta template configuration"
   },
   {
    "fieldname": "column_break_1",

@@ -53,7 +53,8 @@ When you send a WhatsApp message using a template that has buttons, the buttons 
 ### Flow Buttons
 - **Purpose**: Trigger WhatsApp Flows with custom flow tokens
 - **Use Case**: Interactive forms, surveys, lead qualification
-- **Example Flow ID**: `"1081813126775012"`
+- **Template Configuration**: Flow ID, action, and screen are configured in Meta template
+- **Message Sending**: Only flow_token is required when sending messages
 - **Example Flow Token**: `"test123"`
 
 ## Receiving Button Clicks

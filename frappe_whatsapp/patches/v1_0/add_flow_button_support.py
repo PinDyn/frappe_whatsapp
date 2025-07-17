@@ -17,17 +17,8 @@ def execute():
                     field.options += "\nFLOW"
                 break
         
-        # Add flow_id and flow_token fields if they don't exist
+        # Add flow_token field if it doesn't exist
         existing_fields = [f.fieldname for f in doc.fields]
-        
-        if "flow_id" not in existing_fields:
-            doc.append("fields", {
-                "fieldname": "flow_id",
-                "fieldtype": "Data",
-                "label": "Flow ID",
-                "description": "Dynamic Flow ID. Use {{field_name}} to reference document fields",
-                "depends_on": "eval:doc.button_type == 'FLOW'"
-            })
         
         if "flow_token" not in existing_fields:
             doc.append("fields", {
@@ -51,24 +42,33 @@ def execute():
                     field.options += "\nFLOW"
                 break
         
-        # Add flow_id and flow_token fields if they don't exist
+        # Add flow_id, flow_action, and navigate_screen fields if they don't exist
         existing_fields = [f.fieldname for f in doc.fields]
         
         if "flow_id" not in existing_fields:
             doc.append("fields", {
                 "fieldname": "flow_id",
                 "fieldtype": "Data",
-                "label": "Example Flow ID",
-                "description": "Example Flow ID for template creation. The actual Flow ID will be specified in notification parameters when sending messages.",
+                "label": "Flow ID",
+                "description": "Flow ID from Meta template configuration",
                 "depends_on": "eval:doc.button_type == 'FLOW'"
             })
         
-        if "flow_token" not in existing_fields:
+        if "flow_action" not in existing_fields:
             doc.append("fields", {
-                "fieldname": "flow_token",
+                "fieldname": "flow_action",
                 "fieldtype": "Data",
-                "label": "Example Flow Token",
-                "description": "Example Flow Token for template creation. The actual Flow Token will be specified in notification parameters when sending messages.",
+                "label": "Flow Action",
+                "description": "Flow action from Meta template configuration",
+                "depends_on": "eval:doc.button_type == 'FLOW'"
+            })
+        
+        if "navigate_screen" not in existing_fields:
+            doc.append("fields", {
+                "fieldname": "navigate_screen",
+                "fieldtype": "Data",
+                "label": "Navigate Screen",
+                "description": "Navigate screen from Meta template configuration",
                 "depends_on": "eval:doc.button_type == 'FLOW'"
             })
         

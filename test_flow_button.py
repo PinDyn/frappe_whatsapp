@@ -22,8 +22,9 @@ def test_flow_button_creation():
     template.append("buttons", {
         "button_text": "Start Flow",
         "button_type": "FLOW",
-        "flow_id": "1081813126775012",
-        "flow_token": "test123"
+        "flow_id": "1426130335395365",
+        "flow_action": "NAVIGATE",
+        "navigate_screen": "QUESTION_ONE"
     })
     
     try:
@@ -53,7 +54,6 @@ def test_flow_button_notification():
     notification.append("button_parameters", {
         "button_index": 0,
         "button_type": "FLOW",
-        "flow_id": "1081813126775012",
         "flow_token": "{{name}}"  # Dynamic flow token from document
     })
     
