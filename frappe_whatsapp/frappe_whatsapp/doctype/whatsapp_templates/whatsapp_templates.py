@@ -128,6 +128,8 @@ class WhatsAppTemplates(Document):
                 headers=self._headers,
                 data=json.dumps(data),
             )
+            # Debug: Log the response
+            frappe.log_error("Meta Response", f"Response from Meta: {response}")
             self.id = response["id"]
             self.status = response["status"]
             self.db_update()
@@ -327,7 +329,7 @@ class WhatsAppTemplates(Document):
                 })
             cards.append(card_data)
         return {
-            "type": "carousel",
+            "type": "CAROUSEL",
             "cards": cards
         }
 
