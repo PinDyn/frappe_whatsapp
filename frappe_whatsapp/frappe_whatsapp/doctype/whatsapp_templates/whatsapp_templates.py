@@ -270,7 +270,6 @@ class WhatsAppTemplates(Document):
         cards = []
         for card in self.carousel_cards:
             card_data = {
-                "card_index": card.card_index,
                 "components": []
             }
             # Header
