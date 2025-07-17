@@ -9,7 +9,7 @@ import magic
 from frappe.model.document import Document
 from frappe.integrations.utils import make_post_request, make_request
 from frappe.desk.form.utils import get_pdf_link
-from ..utils.carousel_utils import validate_carousel_template, build_carousel_payload
+from frappe_whatsapp.frappe_whatsapp.frappe_whatsapp.utils.carousel_utils import validate_carousel_template, build_carousel_payload
 
 
 class WhatsAppTemplates(Document):
