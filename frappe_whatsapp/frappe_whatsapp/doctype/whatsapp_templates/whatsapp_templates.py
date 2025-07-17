@@ -269,7 +269,9 @@ class WhatsAppTemplates(Document):
 
     def get_carousel_component(self):
         """Build carousel component for template creation."""
+        frappe.log_error("Carousel Debug", "get_carousel_component() method called")
         if not self.carousel_cards:
+            frappe.log_error("Carousel Debug", "No carousel cards found")
             return None
         cards = []
         for card in self.carousel_cards:
