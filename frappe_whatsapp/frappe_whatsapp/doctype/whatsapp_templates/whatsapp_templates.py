@@ -112,7 +112,11 @@ class WhatsAppTemplates(Document):
         if self.template_type == "Carousel":
             carousel_component = self.get_carousel_component()
             if carousel_component:
+                # Debug: Log the carousel component structure
+                frappe.log_error("Carousel Component", f"Carousel component structure: {json.dumps(carousel_component, indent=2)}")
                 data["components"].append(carousel_component)
+            else:
+                frappe.log_error("Carousel Error", "Failed to generate carousel component")
         else:
             # add buttons if any
             if self.buttons:
@@ -123,6 +127,11 @@ class WhatsAppTemplates(Document):
         try:
             # Debug: Log the data being sent
             frappe.log_error("Carousel Template Data", f"Data being sent to Meta: {json.dumps(data, indent=2)}")
+            
+            # Debug: Log the URL and headers
+            frappe.log_error("API Request Details", f"URL: {self._url}/{self._version}/{self._business_id}/message_templates")
+            frappe.log_error("API Headers", f"Headers: {json.dumps(self._headers, indent=2)}")
+            
             response = make_post_request(
                 f"{self._url}/{self._version}/{self._business_id}/message_templates",
                 headers=self._headers,
@@ -315,8 +324,8 @@ class WhatsAppTemplates(Document):
                     "type": "body",
                     "text": card.body_text
                 })
-            # Buttons
-            if card.buttons:
+            # Buttons (only add if buttons exist)
+            if hasattr(card, 'buttons') and card.buttons:
                 buttons = []
                 for button in card.buttons:
                     button_data = {
@@ -336,10 +345,11 @@ class WhatsAppTemplates(Document):
                         if button.navigate_screen:
                             button_data["navigate_screen"] = button.navigate_screen
                     buttons.append(button_data)
-                card_data["components"].append({
-                    "type": "buttons",
-                    "buttons": buttons
-                })
+                if buttons:  # Only add buttons component if there are actual buttons
+                    card_data["components"].append({
+                        "type": "buttons",
+                        "buttons": buttons
+                    })
             cards.append(card_data)
         return {
             "type": "CAROUSEL",
