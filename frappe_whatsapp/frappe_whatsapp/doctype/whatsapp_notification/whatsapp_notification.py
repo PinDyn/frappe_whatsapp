@@ -219,16 +219,11 @@ class WhatsAppNotification(Document):
             self.content_type = template.header_type.lower()
 
             # Add buttons if template has them and notification has button parameters
-            frappe.log_error("Template Buttons Debug", f"Template {template.name} has buttons: {bool(template.buttons)}")
-            frappe.log_error("Notification Button Parameters", f"Notification has button parameters: {bool(self.button_parameters)}")
             if template.buttons and self.button_parameters:
-                frappe.log_error("Button Count", f"Number of template buttons: {len(template.buttons)}, Number of button parameters: {len(self.button_parameters)}")
                 button_components = self.get_template_buttons_component(template, doc, doc_data)
-                frappe.log_error("Button Components", f"Button components created: {button_components}")
                 if button_components:
                     for component in button_components:
                         data["template"]["components"].append(component)
-                    frappe.log_error("Components Updated", f"Final components: {data['template']['components']}")
 
             self.notify(data, doc_data)
 
@@ -245,7 +240,8 @@ class WhatsAppNotification(Document):
         }
         try:
             success = False
-            frappe.log_error("Final API Data", f"Data being sent to API: {json.dumps(data, indent=2)}")
+            # Keep only essential logging for debugging
+            frappe.log_error("WhatsApp API Data", f"Data being sent to API: {json.dumps(data, indent=2)}")
             response = make_post_request(
                 f"{settings.url}/{settings.version}/{settings.phone_id}/messages",
                 headers=headers, data=json.dumps(data)
@@ -354,15 +350,12 @@ class WhatsAppNotification(Document):
                 frappe.throw(f"Phone number is required for PHONE_NUMBER button at index {param.button_index}")
             elif param.button_type == "COPY_CODE" and not param.copy_code_example:
                 frappe.throw(f"Copy code example is required for COPY_CODE button at index {param.button_index}")
+            elif param.button_type == "FLOW" and not param.flow_token:
+                frappe.throw(f"Flow token is required for FLOW button at index {param.button_index}")
 
     def get_template_buttons_component(self, template, doc=None, doc_data=None):
         """Get buttons component for template message."""
-        frappe.log_error("Button Component Debug", f"Template buttons: {template.buttons}")
-        frappe.log_error("Button Count Check", f"Button count: {len(template.buttons) if template.buttons else 0}")
-        frappe.log_error("Button Parameters", f"Notification button parameters: {self.button_parameters}")
-        
         if not template.buttons or len(template.buttons) > 3:
-            frappe.log_error("Button Validation", f"Validation failed: no buttons or too many buttons")
             return None
             
         # Validate button parameters before processing
@@ -370,8 +363,6 @@ class WhatsAppNotification(Document):
             
         # Use the utility function to get processed buttons
         buttons = get_template_buttons_with_dynamic_values(template, self.button_parameters, doc, doc_data)
-        
-        frappe.log_error("Processed Buttons", f"Processed buttons: {buttons}")
             
         # According to WhatsApp API docs, when sending template messages with buttons,
         # each button should be a separate component with type: "button"
