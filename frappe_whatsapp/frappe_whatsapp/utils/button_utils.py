@@ -123,6 +123,10 @@ def get_template_buttons_with_dynamic_values(template, button_parameters, doc=No
             # For COPY_CODE, notification parameter example is required
             example = process_dynamic_payload(param.copy_code_example, doc, doc_data)
             button_data["example"] = [example]
+        elif param.button_type == "FLOW":
+            # For FLOW, only flow_token is required (flow_id is configured in template)
+            flow_token = process_dynamic_payload(param.flow_token, doc, doc_data)
+            button_data["flow_token"] = flow_token
         
         buttons.append(button_data)
     

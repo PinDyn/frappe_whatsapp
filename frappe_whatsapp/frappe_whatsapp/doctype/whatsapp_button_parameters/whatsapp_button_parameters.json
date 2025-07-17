@@ -12,7 +12,8 @@
   "payload",
   "url",
   "phone_number",
-  "copy_code_example"
+  "copy_code_example",
+  "flow_token"
  ],
  "fields": [
   {
@@ -26,7 +27,7 @@
    "fieldname": "button_type",
    "fieldtype": "Select",
    "label": "Button Type",
-   "options": "QUICK_REPLY\nURL\nPHONE_NUMBER\nCOPY_CODE",
+   "options": "QUICK_REPLY\nURL\nPHONE_NUMBER\nCOPY_CODE\nFLOW",
    "reqd": 1
   },
   {
@@ -57,6 +58,13 @@
    "fieldtype": "Data",
    "label": "Copy Code Example",
    "description": "Dynamic code example. Use {{field_name}} to reference document fields"
+  },
+  {
+   "depends_on": "eval:doc.button_type == 'FLOW'",
+   "fieldname": "flow_token",
+   "fieldtype": "Data",
+   "label": "Flow Token",
+   "description": "Dynamic Flow Token. Use {{field_name}} to reference document fields"
   }
  ],
  "index_web_pages_for_search": 1,

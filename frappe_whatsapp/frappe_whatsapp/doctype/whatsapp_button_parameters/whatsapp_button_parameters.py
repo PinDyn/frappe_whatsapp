@@ -18,8 +18,8 @@ class WhatsAppButtonParameters(Document):
         if self.button_type == "PHONE_NUMBER" and not self.phone_number:
             frappe.throw("Phone number is required for Phone Number buttons")
             
-        if self.button_type == "FLOW" and not self.flow_id:
-            frappe.throw("Flow ID is required for Flow buttons")
+        if self.button_type == "FLOW" and not self.flow_token:
+            frappe.throw("Flow Token is required for Flow buttons")
             
         if self.button_type == "COPY_CODE" and not self.copy_code_example:
             frappe.throw("Copy code example is required for Copy Code buttons") 

@@ -12,6 +12,7 @@
   "url",
   "phone_number",
   "copy_code_example",
+  "flow_token",
   "column_break_1"
  ],
  "fields": [
@@ -25,7 +26,7 @@
    "fieldname": "button_type",
    "fieldtype": "Select",
    "label": "Button Type",
-   "options": "QUICK_REPLY\nURL\nPHONE_NUMBER\nCOPY_CODE",
+   "options": "QUICK_REPLY\nURL\nPHONE_NUMBER\nCOPY_CODE\nFLOW",
    "reqd": 1
   },
 
@@ -50,6 +51,13 @@
    "fieldtype": "Data",
    "label": "Example Copy Code",
    "description": "Example code for template creation. The actual code will be specified in notification parameters when sending messages."
+  },
+  {
+   "depends_on": "eval:doc.button_type == 'FLOW'",
+   "fieldname": "flow_token",
+   "fieldtype": "Data",
+   "label": "Example Flow Token",
+   "description": "Example Flow Token for template creation. The actual Flow Token will be specified in notification parameters when sending messages."
   },
   {
    "fieldname": "column_break_1",

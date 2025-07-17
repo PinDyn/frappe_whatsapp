@@ -10,6 +10,7 @@ This feature adds support for WhatsApp template buttons with custom payloads to 
    - **QUICK_REPLY**: Buttons that send a custom payload when clicked
    - **URL**: Buttons that open a URL when clicked
    - **PHONE_NUMBER**: Buttons that initiate a phone call
+   - **FLOW**: Buttons that trigger WhatsApp Flows with custom flow tokens
 
 ## How to Use
 
@@ -49,6 +50,12 @@ When you send a WhatsApp message using a template that has buttons, the buttons 
 - **Use Case**: Customer support, sales inquiries
 - **Example**: `"+1234567890"`
 
+### Flow Buttons
+- **Purpose**: Trigger WhatsApp Flows with custom flow tokens
+- **Use Case**: Interactive forms, surveys, lead qualification
+- **Example Flow ID**: `"1081813126775012"`
+- **Example Flow Token**: `"test123"`
+
 ## Receiving Button Clicks
 
 When a user clicks a button, the webhook will receive the button click as an incoming message of type "button". The webhook handler already processes these and stores them in the WhatsApp Message doctype.
@@ -65,6 +72,8 @@ When a user clicks a button, the webhook will receive the button click as an inc
 
 ### API Integration
 The buttons are sent to Meta's WhatsApp API in the correct format:
+
+**Quick Reply Button:**
 ```json
 {
   "type": "button",
@@ -72,9 +81,25 @@ The buttons are sent to Meta's WhatsApp API in the correct format:
   "index": 0,
   "parameters": [
     {
-      "type": "QUICK_REPLY",
-      "text": "Button Text",
+      "type": "payload",
       "payload": "custom_payload"
+    }
+  ]
+}
+```
+
+**Flow Button:**
+```json
+{
+  "type": "button",
+  "sub_type": "flow",
+  "index": 0,
+  "parameters": [
+    {
+      "type": "action",
+      "action": {
+        "flow_token": "custom_flow_token"
+      }
     }
   ]
 }

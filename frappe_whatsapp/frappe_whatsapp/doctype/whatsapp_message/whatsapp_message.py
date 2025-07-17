@@ -184,6 +184,8 @@ class WhatsAppMessage(Document):
                 button_data["phone_number"] = button.phone_number
             elif button.button_type == "COPY_CODE" and button.copy_code_example:
                 button_data["example"] = [button.copy_code_example]
+            elif button.button_type == "FLOW" and button.flow_token:
+                button_data["flow_token"] = button.flow_token
                 
             buttons.append(button_data)
             

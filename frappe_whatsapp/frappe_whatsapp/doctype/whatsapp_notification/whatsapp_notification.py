@@ -426,6 +426,20 @@ class WhatsAppNotification(Document):
                         }
                     ]
                 })
+            elif button.get("type") == "FLOW":
+                button_components.append({
+                    "type": "button",
+                    "sub_type": "flow",
+                    "index": str(i),
+                    "parameters": [
+                        {
+                            "type": "action",
+                            "action": {
+                                "flow_token": button.get("flow_token", "")
+                            }
+                        }
+                    ]
+                })
         
         # Return all button components
         return button_components if button_components else None

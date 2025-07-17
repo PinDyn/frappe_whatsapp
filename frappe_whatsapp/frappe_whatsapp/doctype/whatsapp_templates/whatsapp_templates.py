@@ -235,6 +235,8 @@ class WhatsAppTemplates(Document):
                 button_data["phone_number"] = button.phone_number
             elif button.button_type == "COPY_CODE" and button.copy_code_example:
                 button_data["example"] = [button.copy_code_example]
+            elif button.button_type == "FLOW" and button.flow_token:
+                button_data["flow_token"] = button.flow_token
             # QUICK_REPLY buttons only need type and text for template creation
                 
             buttons.append(button_data)
@@ -332,7 +334,7 @@ def fetch():
                         frappe.log_error("Button Details", f"Processing button {idx}: {button}")
                         
                         # Skip unsupported button types (if any)
-                        if button.get("type") not in ["QUICK_REPLY", "URL", "PHONE_NUMBER", "COPY_CODE"]:
+                        if button.get("type") not in ["QUICK_REPLY", "URL", "PHONE_NUMBER", "COPY_CODE", "FLOW"]:
                             frappe.log_error("Skipped Button", f"Skipping unsupported button type: {button.get('type')}")
                             continue
                         
@@ -349,6 +351,10 @@ def fetch():
                             button_doc.phone_number = button.get("phone_number", "")
                         elif button.get("type") == "COPY_CODE":
                             button_doc.copy_code_example = button.get("example", [""])[0] if button.get("example") else ""
+                        elif button.get("type") == "FLOW":
+                            # For FLOW buttons, we only need to store flow_token
+                            # flow_id is configured in the template on Meta's side
+                            button_doc.flow_token = button.get("flow_token", "")
                         
                         button_doc.parent = doc.name
                         button_doc.parenttype = "WhatsApp Templates"

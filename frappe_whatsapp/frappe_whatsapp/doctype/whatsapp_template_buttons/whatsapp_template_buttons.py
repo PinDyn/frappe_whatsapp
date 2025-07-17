@@ -16,4 +16,7 @@ class WhatsAppTemplateButtons(Document):
             frappe.throw("URL is required for URL buttons")
             
         if self.button_type == "PHONE_NUMBER" and not self.phone_number:
-            frappe.throw("Phone number is required for Phone Number buttons") 
+            frappe.throw("Phone number is required for Phone Number buttons")
+            
+        if self.button_type == "FLOW" and not self.flow_token:
+            frappe.throw("Flow Token is required for Flow buttons") 
