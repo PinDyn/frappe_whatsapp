@@ -133,6 +133,12 @@ class WhatsAppTemplates(Document):
             self.actual_name = self.template_name.lower().replace(" ", "_")
 
         self.get_settings()
+        
+        # For carousel templates, ensure images are uploaded before creating template
+        if self.template_type == "Carousel":
+            frappe.log_error("Template Creation", "Ensuring carousel images are uploaded...")
+            self.upload_carousel_images()
+        
         data = {
             "name": self.actual_name,
             "language": self.language_code or "en_US",
@@ -363,6 +369,12 @@ class WhatsAppTemplates(Document):
                     if stored_handle:
                         card.whatsapp_handle = stored_handle
                         frappe.log_error("Carousel Debug", f"Loaded handle for card {card.card_index}: {stored_handle}")
+                    else:
+                        frappe.log_error("Carousel Debug", f"No handle found in database for card {card.card_index}")
+                else:
+                    frappe.log_error("Carousel Debug", f"Card {card.card_index} already has handle: {card.whatsapp_handle}")
+            else:
+                frappe.log_error("Carousel Debug", f"Card {card.card_index} has no name attribute")
         
         # Use the carousel utils to build the correct structure
         from ...utils.carousel_utils import build_carousel_payload
