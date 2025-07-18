@@ -1,18 +1,5 @@
 {
- "actions": [
-  {
-   "label": "Create Template",
-   "action": "frappe_whatsapp.frappe_whatsapp.doctype.whatsapp_templates.whatsapp_templates.create_template",
-   "condition": "eval:!doc.id",
-   "group": "Actions"
-  },
-  {
-   "label": "Update Template",
-   "action": "frappe_whatsapp.frappe_whatsapp.doctype.whatsapp_templates.whatsapp_templates.update_template_manual",
-   "condition": "eval:doc.id",
-   "group": "Actions"
-  }
- ],
+ "actions": [],
  "allow_rename": 1,
  "autoname": "format:{template_name}-{language_code}",
  "creation": "2022-10-28 13:39:09.887817",
