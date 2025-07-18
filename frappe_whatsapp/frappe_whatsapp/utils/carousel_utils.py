@@ -150,6 +150,29 @@ def build_header_component(card, processed_params, doc=None, doc_data=None, acce
         dict: Header component payload
     """
     if card.header_type in ["IMAGE", "VIDEO"]:
+        # Check if we already have a WhatsApp handle stored
+        if hasattr(card, 'whatsapp_handle') and card.whatsapp_handle:
+            frappe.logger().info(f"Using stored WhatsApp handle for card {card.card_index}: {card.whatsapp_handle}")
+            return {
+                "type": "header",
+                "format": card.header_type.lower(),
+                "example": {
+                    "header_handle": [card.whatsapp_handle]
+                }
+            }
+        elif hasattr(card, 'name') and card.name:
+            # Try to get the handle from the database
+            stored_handle = frappe.db.get_value("WhatsApp Carousel Cards", card.name, "whatsapp_handle")
+            if stored_handle:
+                frappe.logger().info(f"Using database WhatsApp handle for card {card.card_index}: {stored_handle}")
+                return {
+                    "type": "header",
+                    "format": card.header_type.lower(),
+                    "example": {
+                        "header_handle": [stored_handle]
+                    }
+                }
+        
         # Upload attach field to WhatsApp and get handle
         if card.header_content:
             try:

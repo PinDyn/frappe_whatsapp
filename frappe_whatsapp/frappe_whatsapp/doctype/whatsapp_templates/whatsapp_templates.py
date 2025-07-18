@@ -26,9 +26,18 @@ class WhatsAppTemplates(Document):
 
         # Validate carousel template if it's a carousel type
         if self.template_type == "Carousel":
-            is_valid, error = validate_carousel_template(self)
-            if not is_valid:
-                frappe.throw(f"Carousel template validation failed: {error}")
+            # Only validate if we have carousel cards loaded
+            if hasattr(self, 'carousel_cards') and self.carousel_cards:
+                is_valid, error = validate_carousel_template(self)
+                if not is_valid:
+                    frappe.throw(f"Carousel template validation failed: {error}")
+                
+                # Upload carousel card images if this is a new template or if carousel cards have changed
+                if self.is_new() or self.has_value_changed("carousel_cards"):
+                    self.upload_carousel_images()
+            else:
+                # For fetched templates, we'll validate after the cards are loaded
+                frappe.log_error("Carousel Validation", "Skipping validation - carousel cards not yet loaded")
 
         # Only update template if it's not new and has been approved/created
         if not self.is_new() and self.status in ["APPROVED", "PENDING"]:
@@ -75,6 +84,34 @@ class WhatsAppTemplates(Document):
         )
 
         self._media_id = response['h']
+
+    def upload_carousel_images(self):
+        """Upload images from carousel cards to WhatsApp."""
+        if not self.carousel_cards:
+            return
+        
+        frappe.log_error("Carousel Upload", "Starting carousel image uploads...")
+        
+        for card in self.carousel_cards:
+            if card.header_type in ["IMAGE", "VIDEO"] and card.header_content:
+                try:
+                    frappe.log_error("Carousel Upload", f"Uploading image for card {card.card_index}: {card.header_content}")
+                    
+                    # Upload the image using carousel utils
+                    from ...utils.carousel_utils import upload_attach_to_whatsapp
+                    handle = upload_attach_to_whatsapp(card.header_content, self._token, self._app_id)
+                    
+                    # Store the handle in the card for later use
+                    card.whatsapp_handle = handle
+                    frappe.log_error("Carousel Upload", f"Successfully uploaded card {card.card_index}, handle: {handle}")
+                    
+                    # Save the handle to the database
+                    frappe.db.set_value("WhatsApp Carousel Cards", card.name, "whatsapp_handle", handle)
+                    
+                except Exception as e:
+                    frappe.log_error("Carousel Upload Error", f"Failed to upload image for card {card.card_index}: {str(e)}")
+                    # Don't throw here, just log the error and continue
+                    # The template creation will handle missing images gracefully
 
     def get_absolute_path(self, file_name):
         if(file_name.startswith('/files/')):
@@ -502,42 +539,110 @@ def fetch():
                 # update carousel
                 elif component["type"] == "CAROUSEL":
                     doc.template_type = "Carousel"
+                    frappe.log_error("Carousel Processing", f"Processing carousel component: {component}")
+                    
                     # Clear existing carousel cards
                     if flags:
                         frappe.db.sql("""
                             DELETE FROM `tabWhatsApp Carousel Cards` 
                             WHERE parent = %s AND parenttype = 'WhatsApp Templates'
                         """, doc.name)
+                    
                     cards_list = component.get("cards", [])
-                    for card in cards_list:
+                    frappe.log_error("Carousel Cards", f"Found {len(cards_list)} carousel cards")
+                    
+                    for card_index, card in enumerate(cards_list):
+                        frappe.log_error("Processing Card", f"Processing card {card_index}: {card}")
+                        
                         card_doc = frappe.new_doc("WhatsApp Carousel Cards")
-                        card_doc.card_index = card.get("card_index", 0)
+                        card_doc.card_index = card_index + 1
+                        
                         # Parse card components
                         for c in card.get("components", []):
-                            if c.get("type") == "header":
-                                if "text" in c:
+                            frappe.log_error("Card Component", f"Processing component: {c}")
+                            
+                            if c.get("type") == "HEADER":
+                                if c.get("format") == "TEXT" and "text" in c:
                                     card_doc.header_type = "TEXT"
                                     card_doc.header_text = c["text"]
-                                elif "parameters" in c:
-                                    param = c["parameters"][0]
-                                    if param["type"] == "image":
-                                        card_doc.header_type = "IMAGE"
-                                        card_doc.header_content = param["image"]["link"]
-                                    elif param["type"] == "video":
-                                        card_doc.header_type = "VIDEO"
-                                        card_doc.header_content = param["video"]["link"]
-                            elif c.get("type") == "body":
+                                elif c.get("format") in ["IMAGE", "VIDEO"] and "example" in c:
+                                    card_doc.header_type = c["format"]
+                                    # Extract the handle from the example
+                                    header_handles = c["example"].get("header_handle", [])
+                                    if header_handles:
+                                        # Store the WhatsApp handle
+                                        card_doc.whatsapp_handle = header_handles[0]
+                                        # For now, we'll store the handle as header_content too
+                                        # In a real scenario, you might want to download the image
+                                        card_doc.header_content = header_handles[0]
+                                        frappe.log_error("Header Handle", f"Stored handle: {header_handles[0]}")
+                                
+                            elif c.get("type") == "BODY":
                                 if "text" in c:
                                     card_doc.body_text = c["text"]
+                                    frappe.log_error("Body Text", f"Set body text: {c['text']}")
+                                
+                            elif c.get("type") == "BUTTONS":
+                                # Process buttons for this card
+                                buttons_list = c.get("buttons", [])
+                                frappe.log_error("Card Buttons", f"Found {len(buttons_list)} buttons in card")
+                                
+                                for button_idx, button in enumerate(buttons_list):
+                                    button_doc = frappe.new_doc("WhatsApp Template Buttons")
+                                    button_doc.button_text = button.get("text", "")
+                                    button_doc.button_type = button.get("type", "")
+                                    
+                                    if button.get("type") == "QUICK_REPLY":
+                                        # For QUICK_REPLY, no payload needed in template creation
+                                        pass
+                                    elif button.get("type") == "URL":
+                                        button_doc.url = button.get("url", "")
+                                    elif button.get("type") == "PHONE_NUMBER":
+                                        button_doc.phone_number = button.get("phone_number", "")
+                                    elif button.get("type") == "COPY_CODE":
+                                        button_doc.copy_code_example = button.get("example", [""])[0] if button.get("example") else ""
+                                    elif button.get("type") == "FLOW":
+                                        button_doc.flow_id = button.get("flow_id", "")
+                                        button_doc.flow_action = button.get("flow_action", "")
+                                        button_doc.navigate_screen = button.get("navigate_screen", "")
+                                    
+                                    button_doc.parent = card_doc.name
+                                    button_doc.parenttype = "WhatsApp Carousel Cards"
+                                    button_doc.parentfield = "buttons"
+                                    button_doc.idx = button_idx + 1
+                                    
+                                    try:
+                                        button_doc.db_insert()
+                                        frappe.log_error("Card Button Success", f"Inserted button: {button_doc.button_text}")
+                                    except Exception as e:
+                                        frappe.log_error("Card Button Error", f"Failed to insert button: {e}")
+                        
                         card_doc.parent = doc.name
                         card_doc.parenttype = "WhatsApp Templates"
                         card_doc.parentfield = "carousel_cards"
-                        card_doc.idx = card.get("card_index", 0) + 1
+                        card_doc.idx = card_index + 1
+                        
                         try:
                             card_doc.db_insert()
                             frappe.log_error("Carousel Card Success", f"Inserted card {card_doc.card_index}")
                         except Exception as e:
                             frappe.log_error("Carousel Card Error", f"Failed to insert card: {e}")
+            # Validate carousel template after loading
+            if doc.template_type == "Carousel":
+                try:
+                    # Reload the document to get the carousel cards
+                    doc.reload()
+                    if doc.carousel_cards:
+                        is_valid, error = validate_carousel_template(doc)
+                        if not is_valid:
+                            frappe.log_error("Carousel Validation Error", f"Template {doc.name}: {error}")
+                        else:
+                            frappe.log_error("Carousel Validation Success", f"Template {doc.name} validated successfully")
+                    else:
+                        frappe.log_error("Carousel Validation Warning", f"Template {doc.name} has no carousel cards")
+                except Exception as e:
+                    frappe.log_error("Carousel Validation Exception", f"Error validating template {doc.name}: {e}")
+            
             doc.save(ignore_permissions=True)
         frappe.msgprint("Templates fetched and updated successfully!")
     except Exception as e:

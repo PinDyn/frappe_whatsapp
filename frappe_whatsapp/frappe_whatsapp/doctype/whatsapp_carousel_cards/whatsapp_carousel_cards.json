@@ -6,10 +6,11 @@
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
- "field_order": [
+   "field_order": [
   "card_index",
   "header_type",
   "header_content",
+  "whatsapp_handle",
   "body_text",
   "section_break_buttons",
   "buttons"
@@ -34,6 +35,13 @@
    "fieldtype": "Attach",
    "label": "Header Content",
    "description": "Upload image or video file for card header"
+  },
+  {
+   "fieldname": "whatsapp_handle",
+   "fieldtype": "Data",
+   "label": "WhatsApp Handle",
+   "description": "WhatsApp media handle after upload (auto-filled)",
+   "read_only": 1
   },
 
   {
