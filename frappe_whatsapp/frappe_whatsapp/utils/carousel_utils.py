@@ -138,14 +138,21 @@ def build_header_component(card, processed_params, doc=None, doc_data=None):
                 handle = upload_attach_to_whatsapp(card.header_content)
                 return {
                     "type": "HEADER",
-                    "format": card.header_type,
+                    "format": card.header_type.lower(),
                     "example": {
                         "header_handle": [handle]
                     }
                 }
             except Exception as e:
                 frappe.logger().error(f"Failed to upload header media: {str(e)}")
-                return None
+                # Fallback to direct URL if upload fails
+                return {
+                    "type": "HEADER",
+                    "format": card.header_type.lower(),
+                    "example": {
+                        "header_handle": [card.header_content]
+                    }
+                }
     
     return None
 

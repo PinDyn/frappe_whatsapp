@@ -30,8 +30,11 @@ class WhatsAppTemplates(Document):
             if not is_valid:
                 frappe.throw(f"Carousel template validation failed: {error}")
 
-        if not self.is_new():
-            self.update_template()
+        # Only update template if it's not new and has been approved/created
+        if not self.is_new() and self.status in ["APPROVED", "PENDING"]:
+            # Check if this is a significant change that requires template update
+            if self.has_value_changed("template") or self.has_value_changed("header_type") or self.has_value_changed("category"):
+                self.update_template()
 
 
     def get_session_id(self):
@@ -82,6 +85,13 @@ class WhatsAppTemplates(Document):
 
 
     def after_insert(self):
+        """Set up template name after insert."""
+        if self.template_name:
+            self.actual_name = self.template_name.lower().replace(" ", "_")
+            self.db_update()
+
+    def create_template_in_meta(self):
+        """Create template in Meta API."""
         if self.template_name:
             self.actual_name = self.template_name.lower().replace(" ", "_")
 
@@ -293,68 +303,15 @@ class WhatsAppTemplates(Document):
         if not self.carousel_cards:
             frappe.log_error("Carousel Debug", "No carousel cards found")
             return None
-        cards = []
-        for card in self.carousel_cards:
-            card_data = {
-                "components": []
-            }
-            # Header
-            if card.header_type == "TEXT":
-                card_data["components"].append({
-                    "type": "header",
-                    "format": "text",
-                    "text": card.header_text
-                })
-            elif card.header_type in ["IMAGE", "VIDEO"]:
-                card_data["components"].append({
-                    "type": "header",
-                    "format": card.header_type.lower(),
-                    "parameters": [
-                        {
-                            "type": card.header_type.lower(),
-                            card.header_type.lower(): {
-                                "link": card.header_content
-                            }
-                        }
-                    ]
-                })
-            # Body
-            if card.body_text:
-                card_data["components"].append({
-                    "type": "body",
-                    "text": card.body_text
-                })
-            # Buttons (only add if buttons exist)
-            if hasattr(card, 'buttons') and card.buttons:
-                buttons = []
-                for button in card.buttons:
-                    button_data = {
-                        "type": button.button_type,
-                        "text": button.button_text
-                    }
-                    if button.button_type == "URL" and button.url:
-                        button_data["url"] = button.url
-                    elif button.button_type == "PHONE_NUMBER" and button.phone_number:
-                        button_data["phone_number"] = button.phone_number
-                    elif button.button_type == "COPY_CODE" and button.copy_code_example:
-                        button_data["example"] = [button.copy_code_example]
-                    elif button.button_type == "FLOW" and button.flow_id:
-                        button_data["flow_id"] = button.flow_id
-                        if button.flow_action:
-                            button_data["flow_action"] = button.flow_action
-                        if button.navigate_screen:
-                            button_data["navigate_screen"] = button.navigate_screen
-                    buttons.append(button_data)
-                if buttons:  # Only add buttons component if there are actual buttons
-                    card_data["components"].append({
-                        "type": "buttons",
-                        "buttons": buttons
-                    })
-            cards.append(card_data)
-        return {
-            "type": "CAROUSEL",
-            "cards": cards
-        }
+        
+        # Use the carousel utils to build the correct structure
+        from ...utils.carousel_utils import build_carousel_payload
+        carousel_component = build_carousel_payload(self)
+        
+        if carousel_component:
+            frappe.log_error("Carousel Component Built", f"Carousel component: {json.dumps(carousel_component, indent=2)}")
+        
+        return carousel_component
 
     @frappe.whitelist()
     def preview(self):
@@ -383,6 +340,22 @@ class WhatsAppTemplates(Document):
                     })
             preview["cards"].append(card_info)
         return preview
+
+
+@frappe.whitelist()
+def create_template(docname):
+    """Manually create template in Meta."""
+    doc = frappe.get_doc("WhatsApp Templates", docname)
+    doc.create_template_in_meta()
+    frappe.msgprint("Template created successfully!", indicator="green")
+
+
+@frappe.whitelist()
+def update_template_manual(docname):
+    """Manually update template in Meta."""
+    doc = frappe.get_doc("WhatsApp Templates", docname)
+    doc.update_template()
+    frappe.msgprint("Template updated successfully!", indicator="green")
 
 
 @frappe.whitelist()
