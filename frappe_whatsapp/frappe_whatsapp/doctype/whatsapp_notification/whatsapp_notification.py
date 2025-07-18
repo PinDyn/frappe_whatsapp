@@ -140,20 +140,25 @@ class WhatsAppNotification(Document):
             # Pass parameter values for body component (for all templates including carousel)
             if self.fields:
                 parameters = []
+                frappe.log_error("Field Debug", f"Processing {len(self.fields)} fields for template")
                 for field in self.fields:
+                    frappe.log_error("Field Debug", f"Processing field: {field.field_name}")
                     if isinstance(doc, Document):
                         # get field with prettier value.
                         value = doc.get_formatted(field.field_name)
+                        frappe.log_error("Field Debug", f"Document field {field.field_name}: {value}")
                     else: 
-                        value = doc_data[field.field_name]
-                        if isinstance(doc_data[field.field_name], (datetime.date, datetime.datetime)):
-                            value = str(doc_data[field.field_name])
+                        value = doc_data.get(field.field_name, "")
+                        frappe.log_error("Field Debug", f"Doc data field {field.field_name}: {value}")
+                        if isinstance(value, (datetime.date, datetime.datetime)):
+                            value = str(value)
 
                     parameters.append({
                         "type": "text",
-                        "text": value
+                        "text": value or "Sample text"  # Fallback to prevent empty text
                     })
 
+                frappe.log_error("Field Debug", f"Final parameters: {parameters}")
                 # Add body component with parameters
                 data['template']["components"].append({
                     "type": "body",
