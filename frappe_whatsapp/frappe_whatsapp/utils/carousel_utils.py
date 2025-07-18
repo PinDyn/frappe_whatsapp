@@ -3,6 +3,8 @@
 
 import frappe
 import re
+import requests
+import os
 from frappe.model.document import Document
 from .button_utils import process_dynamic_payload
 
@@ -28,7 +30,7 @@ def build_carousel_payload(template, carousel_parameters=None, doc=None, doc_dat
     
     # Build carousel component
     carousel_component = {
-        "type": "carousel",
+        "type": "CAROUSEL",
         "cards": []
     }
     
@@ -95,7 +97,6 @@ def build_card_payload(card, processed_params, doc=None, doc_data=None):
         dict: Card payload for WhatsApp API
     """
     card_payload = {
-        "card_index": card.card_index,
         "components": []
     }
     
@@ -130,30 +131,21 @@ def build_header_component(card, processed_params, doc=None, doc_data=None):
     Returns:
         dict: Header component payload
     """
-    if card.header_type == "TEXT":
-        return {
-            "type": "header",
-            "text": card.header_text
-        }
-    elif card.header_type in ["IMAGE", "VIDEO"]:
-        header_content = card.header_content
-        
-        # Process dynamic content if needed
-        if processed_params and f"card_{card.card_index}" in processed_params["card_headers"]:
-            card_params = processed_params["card_headers"][f"card_{card.card_index}"]
-            header_content = process_dynamic_payload(header_content, doc, doc_data)
-        
-        return {
-            "type": "header",
-            "parameters": [
-                {
-                    "type": card.header_type.lower(),
-                    card.header_type.lower(): {
-                        "link": header_content
+    if card.header_type in ["IMAGE", "VIDEO"]:
+        # Upload attach field to WhatsApp and get handle
+        if card.header_content:
+            try:
+                handle = upload_attach_to_whatsapp(card.header_content)
+                return {
+                    "type": "HEADER",
+                    "format": card.header_type,
+                    "example": {
+                        "header_handle": [handle]
                     }
                 }
-            ]
-        }
+            except Exception as e:
+                frappe.logger().error(f"Failed to upload header media: {str(e)}")
+                return None
     
     return None
 
@@ -182,13 +174,8 @@ def build_body_component(card, processed_params, doc=None, doc_data=None):
         body_text = process_dynamic_payload(body_text, doc, doc_data)
     
     return {
-        "type": "body",
-        "parameters": [
-            {
-                "type": "text",
-                "text": body_text
-            }
-        ]
+        "type": "BODY",
+        "text": body_text
     }
 
 
@@ -300,14 +287,9 @@ def validate_carousel_card(card):
         tuple: (is_valid, error_message)
     """
     # Validate header
-    if card.header_type == "TEXT":
-        if not card.header_text:
-            return False, "Text header requires header text"
-        if len(card.header_text) > 60:
-            return False, "Text header must be 60 characters or less"
-    elif card.header_type in ["IMAGE", "VIDEO"]:
+    if card.header_type in ["IMAGE", "VIDEO"]:
         if not card.header_content:
-            return False, f"{card.header_type} header requires content URL"
+            return False, f"{card.header_type} header requires uploaded file"
     
     # Validate body
     if card.body_text and len(card.body_text) > 160:
@@ -318,3 +300,50 @@ def validate_carousel_card(card):
         return False, "Maximum 2 buttons allowed per card"
     
     return True, None 
+
+
+def upload_attach_to_whatsapp(attach_field, access_token=None, phone_number_id=None):
+    """
+    Upload an attach field file to WhatsApp and return the handle.
+    
+    Args:
+        attach_field (str): Attach field value (file path)
+        access_token (str): WhatsApp access token (optional, will get from settings)
+        phone_number_id (str): WhatsApp phone number ID (optional, will get from settings)
+    
+    Returns:
+        str: Image handle for use in templates
+    """
+    if not access_token or not phone_number_id:
+        settings = frappe.get_doc("WhatsApp Settings")
+        access_token = access_token or settings.get_password("access_token")
+        phone_number_id = phone_number_id or settings.phone_number_id
+    
+    if not access_token or not phone_number_id:
+        raise Exception("WhatsApp settings not configured properly")
+    
+    # Get file path from attach field
+    file_path = frappe.get_doc("File", {"file_url": attach_field}).get_full_path()
+    
+    # WhatsApp Media Upload API endpoint
+    url = f"https://graph.facebook.com/v21.0/{phone_number_id}/media"
+    
+    # Prepare the file for upload
+    with open(file_path, 'rb') as image_file:
+        files = {
+            'messaging_product': (None, 'whatsapp'),
+            'file': (os.path.basename(file_path), image_file, 'image/jpeg')
+        }
+        
+        headers = {
+            'Authorization': f'Bearer {access_token}'
+        }
+        
+        response = requests.post(url, files=files, headers=headers)
+        
+        if response.status_code == 200:
+            result = response.json()
+            handle = result.get('id')
+            return handle
+        else:
+            raise Exception(f"Failed to upload image: {response.status_code} - {response.text}") 

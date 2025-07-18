@@ -10,7 +10,6 @@
   "card_index",
   "header_type",
   "header_content",
-  "header_text",
   "body_text",
   "section_break_buttons",
   "buttons"
@@ -27,23 +26,16 @@
    "fieldname": "header_type",
    "fieldtype": "Select",
    "label": "Header Type",
-   "options": "IMAGE\nVIDEO\nTEXT",
+   "options": "IMAGE\nVIDEO",
    "reqd": 1
   },
   {
-   "depends_on": "eval:doc.header_type == 'IMAGE' || doc.header_type == 'VIDEO'",
    "fieldname": "header_content",
-   "fieldtype": "Data",
+   "fieldtype": "Attach",
    "label": "Header Content",
-   "description": "URL for media or asset handle"
+   "description": "Upload image or video file for card header"
   },
-  {
-   "depends_on": "eval:doc.header_type == 'TEXT'",
-   "fieldname": "header_text",
-   "fieldtype": "Data",
-   "label": "Header Text",
-   "description": "Text header (max 60 characters)"
-  },
+
   {
    "fieldname": "body_text",
    "fieldtype": "Text",
