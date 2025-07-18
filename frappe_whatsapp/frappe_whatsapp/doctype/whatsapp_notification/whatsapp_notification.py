@@ -137,8 +137,8 @@ class WhatsAppNotification(Document):
                 }
             }
 
-            # Pass parameter values (only for non-carousel templates)
-            if self.fields and template.template_type != "Carousel":
+            # Pass parameter values for body component (for all templates including carousel)
+            if self.fields:
                 parameters = []
                 for field in self.fields:
                     if isinstance(doc, Document):
@@ -154,10 +154,11 @@ class WhatsAppNotification(Document):
                         "text": value
                     })
 
-                data['template']["components"] = [{
+                # Add body component with parameters
+                data['template']["components"].append({
                     "type": "body",
                     "parameters": parameters
-                }]
+                })
 
             if self.attach_document_print:
                 # frappe.db.begin()
