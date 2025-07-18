@@ -323,8 +323,8 @@ def upload_attach_to_whatsapp(attach_field, access_token=None, phone_number_id=N
     """
     if not access_token or not phone_number_id:
         settings = frappe.get_doc("WhatsApp Settings")
-        access_token = access_token or settings.get_password("access_token")
-        phone_number_id = phone_number_id or settings.phone_number_id
+        access_token = access_token or settings.get_password("token")
+        phone_number_id = phone_number_id or settings.phone_id
     
     if not access_token or not phone_number_id:
         raise Exception("WhatsApp settings not configured properly")
