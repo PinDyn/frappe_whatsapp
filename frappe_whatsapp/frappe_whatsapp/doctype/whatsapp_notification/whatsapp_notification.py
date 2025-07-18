@@ -86,16 +86,11 @@ class WhatsAppNotification(Document):
             
             # Handle carousel templates
             if template.template_type == "Carousel":
-                # Validate carousel template
-                is_valid, error = validate_carousel_template(template)
-                if not is_valid:
-                    frappe.log_error(f"Carousel template validation failed: {error}", "WhatsApp Carousel")
-                    return
-                
-                # Build carousel payload for message sending
-                carousel_component = build_carousel_payload(template, self.carousel_parameters, for_message_sending=True)
-                if carousel_component:
-                    data["template"]["components"].append(carousel_component)
+                # For carousel templates, we don't add any components to the message
+                # The carousel structure is already defined in the template itself
+                # We only need to provide the template name and any variables
+                frappe.log_error("Carousel Message", "Sending carousel template - no additional components needed")
+                pass
             else:
                 # Handle regular template buttons
                 if template.buttons and self.button_parameters:
@@ -234,16 +229,11 @@ class WhatsAppNotification(Document):
 
             # Handle carousel templates
             if template.template_type == "Carousel":
-                # Validate carousel template
-                is_valid, error = validate_carousel_template(template)
-                if not is_valid:
-                    frappe.log_error(f"Carousel template validation failed: {error}", "WhatsApp Carousel")
-                    return
-                
                 # Build carousel payload for message sending
-                carousel_component = build_carousel_payload(template, self.carousel_parameters, doc, doc_data, for_message_sending=True)
+                carousel_component = build_carousel_payload_for_message_sending(template, self.carousel_parameters, doc, doc_data)
                 if carousel_component:
                     data["template"]["components"].append(carousel_component)
+
             else:
                 # Handle regular template buttons
                 if template.buttons and self.button_parameters:

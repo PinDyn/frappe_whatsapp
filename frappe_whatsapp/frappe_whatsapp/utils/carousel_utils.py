@@ -521,3 +521,79 @@ def upload_attach_to_whatsapp(attach_field, access_token=None, app_id=None):
         if hasattr(e, 'response') and e.response is not None:
             frappe.logger().error(f"Response: {e.response.text}")
         raise Exception(f"Failed to upload file: {e}") 
+
+
+def build_carousel_payload_for_message_sending(template, carousel_parameters=None, doc=None, doc_data=None):
+    """
+    Build carousel payload for WhatsApp API message sending (not template creation).
+    Args:
+        template: WhatsApp Template document
+        carousel_parameters: List of carousel parameter documents
+        doc (Document): Frappe document object
+        doc_data (dict): Document data as dictionary
+    Returns:
+        dict: Carousel payload for WhatsApp API message sending
+    """
+    if not template.carousel_cards:
+        return None
+
+    cards = []
+    for card in template.carousel_cards:
+        card_dict = {
+            "card_index": card.card_index,
+            "components": []
+        }
+        # Header image (prefer WhatsApp asset id, fallback to link)
+        image_id = getattr(card, 'whatsapp_handle', None)
+        if image_id and (image_id.startswith('4:') or image_id.isdigit()):
+            header_component = {
+                "type": "header",
+                "parameters": [
+                    {
+                        "type": "image",
+                        "image": {"id": image_id}
+                    }
+                ]
+            }
+        else:
+            # fallback to link
+            header_component = {
+                "type": "header",
+                "parameters": [
+                    {
+                        "type": "image",
+                        "image": {"link": card.header_content}
+                    }
+                ]
+            }
+        card_dict["components"].append(header_component)
+
+        # Buttons (each as a separate component)
+        if card.buttons:
+            for idx, button in enumerate(card.buttons):
+                btn_type = button.button_type.upper()
+                btn_component = {
+                    "type": "button",
+                    "sub_type": button.button_type.lower(),
+                    "index": str(idx),
+                    "parameters": []
+                }
+                if btn_type == "QUICK_REPLY":
+                    btn_component["parameters"].append({
+                        "type": "payload",
+                        "payload": button.payload or button.button_text
+                    })
+                elif btn_type == "URL":
+                    btn_component["parameters"].append({
+                        "type": "text",
+                        "text": button.url or button.button_text
+                    })
+                # Add more button types as needed
+                card_dict["components"].append(btn_component)
+
+        cards.append(card_dict)
+
+    return {
+        "type": "carousel",
+        "cards": cards
+    } 
