@@ -98,7 +98,7 @@ class WhatsAppTemplates(Document):
         self.get_settings()
         data = {
             "name": self.actual_name,
-            "language": self.language_code,
+            "language": self.language_code or "en_US",
             "category": self.category,
             "components": [],
         }
@@ -109,6 +109,9 @@ class WhatsAppTemplates(Document):
         }
         if self.sample_values:
             body.update({"example": {"body_text": [self.sample_values.split(",")]}})
+        else:
+            # Add example even if no variables (Meta requires this for carousel templates)
+            body.update({"example": {"body_text": [["Sample text"]]}})
 
         data["components"].append(body)
         if self.header_type:
@@ -189,6 +192,9 @@ class WhatsAppTemplates(Document):
         }
         if self.sample_values:
             body.update({"example": {"body_text": [self.sample_values.split(",")]}})
+        else:
+            # Add example even if no variables (Meta requires this for carousel templates)
+            body.update({"example": {"body_text": [["Sample text"]]}})
         data["components"].append(body)
         if self.header_type:
             data["components"].append(self.get_header())
@@ -313,7 +319,7 @@ class WhatsAppTemplates(Document):
         
         # Use the carousel utils to build the correct structure
         from ...utils.carousel_utils import build_carousel_payload
-        carousel_component = build_carousel_payload(self)
+        carousel_component = build_carousel_payload(self, access_token=self._token, app_id=self._app_id)
         
         if carousel_component:
             frappe.log_error("Carousel Component Built", f"Carousel component: {json.dumps(carousel_component, indent=2)}")

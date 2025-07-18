@@ -110,11 +110,18 @@ class WhatsAppMessage(Document):
                     }]
                 })
 
-        # Add buttons if template has them
-        if template.buttons:
-            button_component = self.get_template_buttons_component(template)
-            if button_component:
-                data["template"]["components"].append(button_component)
+        # Handle carousel templates
+        if template.template_type == "Carousel":
+            from ...utils.carousel_utils import build_carousel_payload
+            carousel_component = build_carousel_payload(template, doc=self, doc_data=self.flags.custom_ref_doc)
+            if carousel_component:
+                data["template"]["components"].append(carousel_component)
+        else:
+            # Add buttons if template has them (for non-carousel templates)
+            if template.buttons:
+                button_component = self.get_template_buttons_component(template)
+                if button_component:
+                    data["template"]["components"].append(button_component)
 
         self.notify(data)
 

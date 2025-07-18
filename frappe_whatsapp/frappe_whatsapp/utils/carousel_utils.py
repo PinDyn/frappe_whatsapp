@@ -9,7 +9,7 @@ from frappe.model.document import Document
 from .button_utils import process_dynamic_payload
 
 
-def build_carousel_payload(template, carousel_parameters=None, doc=None, doc_data=None):
+def build_carousel_payload(template, carousel_parameters=None, doc=None, doc_data=None, access_token=None, app_id=None):
     """
     Build carousel payload for WhatsApp API.
     
@@ -18,6 +18,8 @@ def build_carousel_payload(template, carousel_parameters=None, doc=None, doc_dat
         carousel_parameters: List of carousel parameter documents
         doc (Document): Frappe document object
         doc_data (dict): Document data as dictionary
+        access_token (str): WhatsApp access token (optional)
+        app_id (str): WhatsApp App ID (optional)
     
     Returns:
         dict: Carousel payload for WhatsApp API
@@ -30,13 +32,13 @@ def build_carousel_payload(template, carousel_parameters=None, doc=None, doc_dat
     
     # Build carousel component
     carousel_component = {
-        "type": "CAROUSEL",
+        "type": "carousel",
         "cards": []
     }
     
     # Process each card
     for card in template.carousel_cards:
-        card_payload = build_card_payload(card, processed_params, doc, doc_data)
+        card_payload = build_card_payload(card, processed_params, doc, doc_data, access_token, app_id)
         if card_payload:
             carousel_component["cards"].append(card_payload)
     
@@ -83,7 +85,7 @@ def process_carousel_parameters(carousel_parameters, doc=None, doc_data=None):
     return processed
 
 
-def build_card_payload(card, processed_params, doc=None, doc_data=None):
+def build_card_payload(card, processed_params, doc=None, doc_data=None, access_token=None, app_id=None):
     """
     Build individual card payload for carousel.
     
@@ -92,6 +94,8 @@ def build_card_payload(card, processed_params, doc=None, doc_data=None):
         processed_params: Processed carousel parameters
         doc (Document): Frappe document object
         doc_data (dict): Document data as dictionary
+        access_token (str): WhatsApp access token (optional)
+        app_id (str): WhatsApp App ID (optional)
     
     Returns:
         dict: Card payload for WhatsApp API
@@ -101,7 +105,7 @@ def build_card_payload(card, processed_params, doc=None, doc_data=None):
     }
     
     # Add header component
-    header_component = build_header_component(card, processed_params, doc, doc_data)
+    header_component = build_header_component(card, processed_params, doc, doc_data, access_token, app_id)
     if header_component:
         card_payload["components"].append(header_component)
     
@@ -117,7 +121,7 @@ def build_card_payload(card, processed_params, doc=None, doc_data=None):
     else:
         # Add default button if no buttons are specified (Meta requires at least 1 button per card)
         default_button_component = {
-            "type": "BUTTONS",
+            "type": "buttons",
             "buttons": [
                 {
                     "type": "quick_reply",
@@ -130,7 +134,7 @@ def build_card_payload(card, processed_params, doc=None, doc_data=None):
     return card_payload
 
 
-def build_header_component(card, processed_params, doc=None, doc_data=None):
+def build_header_component(card, processed_params, doc=None, doc_data=None, access_token=None, app_id=None):
     """
     Build header component for carousel card.
     
@@ -139,6 +143,8 @@ def build_header_component(card, processed_params, doc=None, doc_data=None):
         processed_params: Processed carousel parameters
         doc (Document): Frappe document object
         doc_data (dict): Document data as dictionary
+        access_token (str): WhatsApp access token (optional)
+        app_id (str): WhatsApp App ID (optional)
     
     Returns:
         dict: Header component payload
@@ -147,9 +153,9 @@ def build_header_component(card, processed_params, doc=None, doc_data=None):
         # Upload attach field to WhatsApp and get handle
         if card.header_content:
             try:
-                handle = upload_attach_to_whatsapp(card.header_content)
+                handle = upload_attach_to_whatsapp(card.header_content, access_token, app_id)
                 return {
-                    "type": "HEADER",
+                    "type": "header",
                     "format": card.header_type.lower(),
                     "example": {
                         "header_handle": [handle]
@@ -159,7 +165,7 @@ def build_header_component(card, processed_params, doc=None, doc_data=None):
                 frappe.logger().error(f"Failed to upload header media: {str(e)}")
                 # Fallback to direct URL if upload fails
                 return {
-                    "type": "HEADER",
+                    "type": "header",
                     "format": card.header_type.lower(),
                     "example": {
                         "header_handle": [card.header_content]
@@ -192,10 +198,27 @@ def build_body_component(card, processed_params, doc=None, doc_data=None):
         card_params = processed_params["card_bodies"][f"card_{card.card_index}"]
         body_text = process_dynamic_payload(body_text, doc, doc_data)
     
-    return {
-        "type": "BODY",
+    body_component = {
+        "type": "body",
         "text": body_text
     }
+    
+    # Add example for variables if any are present in the text
+    if "{{" in body_text and "}}" in body_text:
+        # Extract variable placeholders and create example values
+        import re
+        variables = re.findall(r'\{\{(\d+)\}\}', body_text)
+        if variables:
+            # Create example values for each variable
+            example_values = []
+            for var_num in variables:
+                example_values.append(f"Sample{var_num}")
+            
+            body_component["example"] = {
+                "body_text": [example_values]
+            }
+    
+    return body_component
 
 
 def build_buttons_component(card, doc=None, doc_data=None):
@@ -254,6 +277,17 @@ def build_button_payload(button, doc=None, doc_data=None):
         if button.url:
             url = process_dynamic_payload(button.url, doc, doc_data)
             button_data["url"] = url
+            
+            # Add example for URL parameters if any are present
+            if "{{" in url and "}}" in url:
+                import re
+                variables = re.findall(r'\{\{(\d+)\}\}', url)
+                if variables:
+                    # Create example values for each variable
+                    example_values = []
+                    for var_num in variables:
+                        example_values.append(f"Sample{var_num}")
+                    button_data["example"] = example_values
     elif button.button_type == "PHONE_NUMBER":
         if button.phone_number:
             phone = process_dynamic_payload(button.phone_number, doc, doc_data)
@@ -322,48 +356,91 @@ def validate_carousel_card(card):
     return True, None 
 
 
-def upload_attach_to_whatsapp(attach_field, access_token=None, phone_number_id=None):
+def upload_attach_to_whatsapp(attach_field, access_token=None, app_id=None):
     """
-    Upload an attach field file to WhatsApp and return the handle.
+    Upload an attach field file to WhatsApp using Resumable Upload API and return the handle.
     
     Args:
-        attach_field (str): Attach field value (file path)
+        attach_field (str): Attach field value (file URL)
         access_token (str): WhatsApp access token (optional, will get from settings)
-        phone_number_id (str): WhatsApp phone number ID (optional, will get from settings)
+        app_id (str): WhatsApp App ID (optional, will get from settings)
     
     Returns:
         str: Image handle for use in templates
     """
-    if not access_token or not phone_number_id:
+    if not access_token or not app_id:
         settings = frappe.get_doc("WhatsApp Settings")
         access_token = access_token or settings.get_password("token")
-        phone_number_id = phone_number_id or settings.phone_id
+        app_id = app_id or settings.app_id  # We'll need to add this field to settings
     
-    if not access_token or not phone_number_id:
+    if not access_token or not app_id:
         raise Exception("WhatsApp settings not configured properly")
     
-    # Get file path from attach field
-    file_path = frappe.get_doc("File", {"file_url": attach_field}).get_full_path()
+    # Get file document from attach field
+    file_doc = frappe.get_doc("File", {"file_url": attach_field})
     
-    # WhatsApp Media Upload API endpoint
-    url = f"https://graph.facebook.com/v21.0/{phone_number_id}/media"
+    # Get file content from Frappe file system
+    file_path = file_doc.get_full_path()
     
-    # Prepare the file for upload
-    with open(file_path, 'rb') as image_file:
-        files = {
-            'messaging_product': (None, 'whatsapp'),
-            'file': (os.path.basename(file_path), image_file, 'image/jpeg')
-        }
+    if not os.path.exists(file_path):
+        raise Exception(f"File not found: {file_path}")
+    
+    # Get file info
+    file_size = os.path.getsize(file_path)
+    mime_type = file_doc.content_type or 'image/jpeg'
+    
+    frappe.logger().info(f"Uploading file: {file_doc.file_name}, Size: {file_size}, Type: {mime_type}")
+    
+    # Step 1: Create upload session using App ID
+    session_url = f"https://graph.facebook.com/v23.0/{app_id}/uploads"
+    
+    # Use query parameters as per Meta documentation
+    params = {
+        "file_name": file_doc.file_name,
+        "file_length": file_size,
+        "file_type": mime_type,
+        "access_token": access_token
+    }
+    
+    try:
+        frappe.logger().info("Creating upload session...")
+        session_response = requests.post(session_url, params=params)
         
-        headers = {
-            'Authorization': f'Bearer {access_token}'
-        }
-        
-        response = requests.post(url, files=files, headers=headers)
-        
-        if response.status_code == 200:
-            result = response.json()
-            handle = result.get('id')
-            return handle
+        if session_response.status_code == 200:
+            session_data = session_response.json()
+            
+            session_id = session_data.get('id')
+            if not session_id:
+                raise Exception("Failed to get session ID")
+            
+            frappe.logger().info(f"Upload session created: {session_id}")
+            
+            # Step 2: Upload the file
+            upload_url = f"https://graph.facebook.com/v23.0/{session_id}"
+            
+            upload_headers = {
+                "Authorization": f"OAuth {access_token}",
+                "file_offset": "0"
+            }
+            
+            frappe.logger().info("Uploading file...")
+            with open(file_path, 'rb') as file:
+                upload_response = requests.post(upload_url, headers=upload_headers, data=file.read())
+                upload_response.raise_for_status()
+                upload_data = upload_response.json()
+            
+            asset_handle = upload_data.get('h')
+            if not asset_handle:
+                raise Exception("Failed to get asset handle")
+            
+            frappe.logger().info(f"File uploaded successfully! Asset handle: {asset_handle}")
+            return asset_handle
+            
         else:
-            raise Exception(f"Failed to upload image: {response.status_code} - {response.text}") 
+            raise Exception(f"Session creation failed: {session_response.status_code} - {session_response.text}")
+            
+    except requests.exceptions.RequestException as e:
+        frappe.logger().error(f"Upload failed: {e}")
+        if hasattr(e, 'response') and e.response is not None:
+            frappe.logger().error(f"Response: {e.response.text}")
+        raise Exception(f"Failed to upload file: {e}") 
