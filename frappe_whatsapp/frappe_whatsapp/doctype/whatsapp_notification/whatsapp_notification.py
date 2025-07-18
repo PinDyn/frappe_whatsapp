@@ -10,7 +10,7 @@ from frappe.integrations.utils import make_post_request
 from frappe.desk.form.utils import get_pdf_link
 from frappe.utils import add_to_date, nowdate, datetime
 from ...utils.button_utils import get_template_buttons_with_dynamic_values, process_dynamic_payload
-from ...utils.carousel_utils import build_carousel_payload, validate_carousel_template
+from ...utils.carousel_utils import build_carousel_payload, validate_carousel_template, build_carousel_payload_for_message_sending
 
 
 class WhatsAppNotification(Document):
