@@ -420,7 +420,17 @@ def upload_attach_to_whatsapp(attach_field, access_token=None, app_id=None):
     
     # Get file info
     file_size = os.path.getsize(file_path)
-    mime_type = file_doc.content_type or 'image/jpeg'
+    
+    # Determine MIME type
+    if hasattr(file_doc, 'content_type') and file_doc.content_type:
+        mime_type = file_doc.content_type
+    else:
+        # Fallback: determine MIME type from file extension
+        import mimetypes
+        mime_type, _ = mimetypes.guess_type(file_path)
+        if not mime_type:
+            # Default to image/jpeg if we can't determine the type
+            mime_type = 'image/jpeg'
     
     frappe.logger().info(f"Uploading file: {file_doc.file_name}, Size: {file_size}, Type: {mime_type}")
     
