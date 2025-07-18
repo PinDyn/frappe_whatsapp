@@ -9,7 +9,7 @@ from frappe.model.document import Document
 from .button_utils import process_dynamic_payload
 
 
-def build_carousel_payload(template, carousel_parameters=None, doc=None, doc_data=None, access_token=None, app_id=None):
+def build_carousel_payload(template, carousel_parameters=None, doc=None, doc_data=None, access_token=None, app_id=None, for_message_sending=False):
     """
     Build carousel payload for WhatsApp API.
     
@@ -20,6 +20,7 @@ def build_carousel_payload(template, carousel_parameters=None, doc=None, doc_dat
         doc_data (dict): Document data as dictionary
         access_token (str): WhatsApp access token (optional)
         app_id (str): WhatsApp App ID (optional)
+        for_message_sending (bool): If True, build payload for message sending (not template creation)
     
     Returns:
         dict: Carousel payload for WhatsApp API
@@ -38,7 +39,7 @@ def build_carousel_payload(template, carousel_parameters=None, doc=None, doc_dat
     
     # Process each card
     for card in template.carousel_cards:
-        card_payload = build_card_payload(card, processed_params, doc, doc_data, access_token, app_id)
+        card_payload = build_card_payload(card, processed_params, doc, doc_data, access_token, app_id, for_message_sending)
         if card_payload:
             carousel_component["cards"].append(card_payload)
     
@@ -85,7 +86,7 @@ def process_carousel_parameters(carousel_parameters, doc=None, doc_data=None):
     return processed
 
 
-def build_card_payload(card, processed_params, doc=None, doc_data=None, access_token=None, app_id=None):
+def build_card_payload(card, processed_params, doc=None, doc_data=None, access_token=None, app_id=None, for_message_sending=False):
     """
     Build individual card payload for carousel.
     
@@ -96,6 +97,7 @@ def build_card_payload(card, processed_params, doc=None, doc_data=None, access_t
         doc_data (dict): Document data as dictionary
         access_token (str): WhatsApp access token (optional)
         app_id (str): WhatsApp App ID (optional)
+        for_message_sending (bool): If True, build payload for message sending (not template creation)
     
     Returns:
         dict: Card payload for WhatsApp API
@@ -105,17 +107,17 @@ def build_card_payload(card, processed_params, doc=None, doc_data=None, access_t
     }
     
     # Add header component
-    header_component = build_header_component(card, processed_params, doc, doc_data, access_token, app_id)
+    header_component = build_header_component(card, processed_params, doc, doc_data, access_token, app_id, for_message_sending)
     if header_component:
         card_payload["components"].append(header_component)
     
     # Add body component
-    body_component = build_body_component(card, processed_params, doc, doc_data)
+    body_component = build_body_component(card, processed_params, doc, doc_data, for_message_sending)
     if body_component:
         card_payload["components"].append(body_component)
     
     # Add buttons component
-    buttons_component = build_buttons_component(card, doc, doc_data)
+    buttons_component = build_buttons_component(card, doc, doc_data, for_message_sending)
     if buttons_component:
         card_payload["components"].append(buttons_component)
     else:
@@ -134,7 +136,7 @@ def build_card_payload(card, processed_params, doc=None, doc_data=None, access_t
     return card_payload
 
 
-def build_header_component(card, processed_params, doc=None, doc_data=None, access_token=None, app_id=None):
+def build_header_component(card, processed_params, doc=None, doc_data=None, access_token=None, app_id=None, for_message_sending=False):
     """
     Build header component for carousel card.
     
@@ -145,47 +147,57 @@ def build_header_component(card, processed_params, doc=None, doc_data=None, acce
         doc_data (dict): Document data as dictionary
         access_token (str): WhatsApp access token (optional)
         app_id (str): WhatsApp App ID (optional)
+        for_message_sending (bool): If True, build payload for message sending (not template creation)
     
     Returns:
         dict: Header component payload
     """
     if card.header_type in ["IMAGE", "VIDEO"]:
-        frappe.log_error("Header Debug", f"Building header component for card {card.card_index}, type: {card.header_type}")
+        frappe.log_error("Header Debug", f"Building header component for card {card.card_index}, type: {card.header_type}, for_message_sending: {for_message_sending}")
         frappe.log_error("Header Debug", f"Card header_content: {card.header_content}")
         frappe.log_error("Header Debug", f"Card has whatsapp_handle attr: {hasattr(card, 'whatsapp_handle')}")
         if hasattr(card, 'whatsapp_handle'):
             frappe.log_error("Header Debug", f"Card whatsapp_handle value: {card.whatsapp_handle}")
         
-        # Check if we already have a WhatsApp handle stored
+        # Get the handle (either from card object or database)
+        handle = None
         if hasattr(card, 'whatsapp_handle') and card.whatsapp_handle:
-            frappe.log_error("Header Debug", f"Using stored WhatsApp handle for card {card.card_index}: {card.whatsapp_handle}")
-            return {
-                "type": "header",
-                "format": card.header_type.lower(),
-                "example": {
-                    "header_handle": [card.whatsapp_handle]
-                }
-            }
+            handle = card.whatsapp_handle
+            frappe.log_error("Header Debug", f"Using stored WhatsApp handle for card {card.card_index}: {handle}")
         elif hasattr(card, 'name') and card.name:
             # Try to get the handle from the database
             stored_handle = frappe.db.get_value("WhatsApp Carousel Cards", card.name, "whatsapp_handle")
             frappe.log_error("Header Debug", f"Database lookup for card {card.name}: {stored_handle}")
             if stored_handle:
-                frappe.log_error("Header Debug", f"Using database WhatsApp handle for card {card.card_index}: {stored_handle}")
-                return {
-                    "type": "header",
-                    "format": card.header_type.lower(),
-                    "example": {
-                        "header_handle": [stored_handle]
-                    }
-                }
+                handle = stored_handle
+                frappe.log_error("Header Debug", f"Using database WhatsApp handle for card {card.card_index}: {handle}")
         
-        # Upload attach field to WhatsApp and get handle
-        if card.header_content:
+        # If no handle found, try to upload
+        if not handle and card.header_content:
             try:
                 frappe.log_error("Header Debug", f"Attempting to upload header content: {card.header_content}")
                 handle = upload_attach_to_whatsapp(card.header_content, access_token, app_id)
                 frappe.log_error("Header Debug", f"Upload successful, got handle: {handle}")
+            except Exception as e:
+                frappe.log_error("Header Debug", f"Failed to upload header media: {str(e)}")
+                # Fallback to direct URL if upload fails
+                handle = card.header_content
+                frappe.log_error("Header Debug", f"Falling back to direct URL: {handle}")
+        
+        if handle:
+            if for_message_sending:
+                # For message sending, use parameters structure
+                return {
+                    "type": "header",
+                    "parameters": [{
+                        "type": "image",
+                        "image": {
+                            "link": handle
+                        }
+                    }]
+                }
+            else:
+                # For template creation, use example structure
                 return {
                     "type": "header",
                     "format": card.header_type.lower(),
@@ -193,22 +205,11 @@ def build_header_component(card, processed_params, doc=None, doc_data=None, acce
                         "header_handle": [handle]
                     }
                 }
-            except Exception as e:
-                frappe.log_error("Header Debug", f"Failed to upload header media: {str(e)}")
-                # Fallback to direct URL if upload fails
-                frappe.log_error("Header Debug", f"Falling back to direct URL: {card.header_content}")
-                return {
-                    "type": "header",
-                    "format": card.header_type.lower(),
-                    "example": {
-                        "header_handle": [card.header_content]
-                    }
-                }
     
     return None
 
 
-def build_body_component(card, processed_params, doc=None, doc_data=None):
+def build_body_component(card, processed_params, doc=None, doc_data=None, for_message_sending=False):
     """
     Build body component for carousel card.
     
@@ -217,6 +218,7 @@ def build_body_component(card, processed_params, doc=None, doc_data=None):
         processed_params: Processed carousel parameters
         doc (Document): Frappe document object
         doc_data (dict): Document data as dictionary
+        for_message_sending (bool): If True, build payload for message sending (not template creation)
     
     Returns:
         dict: Body component payload
@@ -231,30 +233,59 @@ def build_body_component(card, processed_params, doc=None, doc_data=None):
         card_params = processed_params["card_bodies"][f"card_{card.card_index}"]
         body_text = process_dynamic_payload(body_text, doc, doc_data)
     
-    body_component = {
-        "type": "body",
-        "text": body_text
-    }
-    
-    # Add example for variables if any are present in the text
-    if "{{" in body_text and "}}" in body_text:
-        # Extract variable placeholders and create example values
-        import re
-        variables = re.findall(r'\{\{(\d+)\}\}', body_text)
-        if variables:
-            # Create example values for each variable
-            example_values = []
-            for var_num in variables:
-                example_values.append(f"Sample{var_num}")
-            
-            body_component["example"] = {
-                "body_text": [example_values]
-            }
-    
-    return body_component
+    if for_message_sending:
+        # For message sending, we don't need body component if no variables
+        # Only add if there are variables to replace
+        if "{{" in body_text and "}}" in body_text:
+            # Extract variable placeholders and create parameters
+            import re
+            variables = re.findall(r'\{\{(\d+)\}\}', body_text)
+            if variables:
+                parameters = []
+                for var_num in variables:
+                    # Get value from processed params or use default
+                    value = f"Sample{var_num}"
+                    if processed_params and f"card_{card.card_index}" in processed_params["card_bodies"]:
+                        card_params = processed_params["card_bodies"][f"card_{card.card_index}"]
+                        if f"var_{var_num}" in card_params:
+                            value = card_params[f"var_{var_num}"]
+                    
+                    parameters.append({
+                        "type": "text",
+                        "text": value
+                    })
+                
+                return {
+                    "type": "body",
+                    "parameters": parameters
+                }
+        return None
+    else:
+        # For template creation, use text structure
+        body_component = {
+            "type": "body",
+            "text": body_text
+        }
+        
+        # Add example for variables if any are present in the text
+        if "{{" in body_text and "}}" in body_text:
+            # Extract variable placeholders and create example values
+            import re
+            variables = re.findall(r'\{\{(\d+)\}\}', body_text)
+            if variables:
+                # Create example values for each variable
+                example_values = []
+                for var_num in variables:
+                    example_values.append(f"Sample{var_num}")
+                
+                body_component["example"] = {
+                    "body_text": [example_values]
+                }
+        
+        return body_component
 
 
-def build_buttons_component(card, doc=None, doc_data=None):
+def build_buttons_component(card, doc=None, doc_data=None, for_message_sending=False):
     """
     Build buttons component for carousel card.
     
@@ -262,6 +293,7 @@ def build_buttons_component(card, doc=None, doc_data=None):
         card: WhatsApp Carousel Cards document
         doc (Document): Frappe document object
         doc_data (dict): Document data as dictionary
+        for_message_sending (bool): If True, build payload for message sending (not template creation)
     
     Returns:
         dict: Buttons component payload
@@ -271,7 +303,7 @@ def build_buttons_component(card, doc=None, doc_data=None):
     
     buttons = []
     for button in card.buttons:
-        button_payload = build_button_payload(button, doc, doc_data)
+        button_payload = build_button_payload(button, doc, doc_data, for_message_sending)
         if button_payload:
             buttons.append(button_payload)
     
@@ -284,7 +316,7 @@ def build_buttons_component(card, doc=None, doc_data=None):
     return None
 
 
-def build_button_payload(button, doc=None, doc_data=None):
+def build_button_payload(button, doc=None, doc_data=None, for_message_sending=False):
     """
     Build individual button payload for carousel card.
     
@@ -292,6 +324,7 @@ def build_button_payload(button, doc=None, doc_data=None):
         button: WhatsApp Template Buttons document
         doc (Document): Frappe document object
         doc_data (dict): Document data as dictionary
+        for_message_sending (bool): If True, build payload for message sending (not template creation)
     
     Returns:
         dict: Button payload for WhatsApp API
@@ -311,16 +344,17 @@ def build_button_payload(button, doc=None, doc_data=None):
             url = process_dynamic_payload(button.url, doc, doc_data)
             button_data["url"] = url
             
-            # Add example for URL parameters if any are present
-            if "{{" in url and "}}" in url:
-                import re
-                variables = re.findall(r'\{\{(\d+)\}\}', url)
-                if variables:
-                    # Create example values for each variable
-                    example_values = []
-                    for var_num in variables:
-                        example_values.append(f"Sample{var_num}")
-                    button_data["example"] = example_values
+            if not for_message_sending:
+                # Add example for URL parameters if any are present (only for template creation)
+                if "{{" in url and "}}" in url:
+                    import re
+                    variables = re.findall(r'\{\{(\d+)\}\}', url)
+                    if variables:
+                        # Create example values for each variable
+                        example_values = []
+                        for var_num in variables:
+                            example_values.append(f"Sample{var_num}")
+                        button_data["example"] = example_values
     elif button.button_type == "PHONE_NUMBER":
         if button.phone_number:
             phone = process_dynamic_payload(button.phone_number, doc, doc_data)

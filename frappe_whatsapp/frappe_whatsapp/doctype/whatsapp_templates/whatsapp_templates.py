@@ -139,9 +139,14 @@ class WhatsAppTemplates(Document):
             frappe.log_error("Template Creation", "Ensuring carousel images are uploaded...")
             self.upload_carousel_images()
         
+        # Ensure language code is in correct format
+        language_code = self.language_code or "en_US"
+        if language_code == "en":
+            language_code = "en_US"
+        
         data = {
             "name": self.actual_name,
-            "language": self.language_code or "en_US",
+            "language": language_code,
             "category": self.category,
             "components": [],
         }
@@ -203,23 +208,35 @@ class WhatsAppTemplates(Document):
             frappe.log_error("Exception Details", f"Exception: {str(e)}")
             frappe.log_error("Exception Type", f"Exception type: {type(e)}")
             
+            # Enhanced error logging
             if hasattr(e, 'response') and e.response:
                 try:
-                    error_response = e.response.json()
-                    frappe.log_error("Meta Error Response", f"Full error response: {json.dumps(error_response, indent=2)}")
                     frappe.log_error("Meta Error Status", f"Error status code: {e.response.status_code}")
                     frappe.log_error("Meta Error Text", f"Error text: {e.response.text}")
                     
-                    if 'error' in error_response:
-                        res = error_response['error']
-                        error_message = res.get("error_user_msg", res.get("message"))
-                        frappe.throw(
-                            msg=error_message,
-                            title=res.get("error_user_title", "Error"),
-                        )
+                    # Try to parse JSON error response
+                    try:
+                        error_response = e.response.json()
+                        frappe.log_error("Meta Error Response", f"Full error response: {json.dumps(error_response, indent=2)}")
+                        
+                        if 'error' in error_response:
+                            res = error_response['error']
+                            error_message = res.get("error_user_msg", res.get("message"))
+                            frappe.log_error("Meta Error Message", f"Error message: {error_message}")
+                            frappe.log_error("Meta Error Title", f"Error title: {res.get('error_user_title', 'Error')}")
+                            frappe.throw(
+                                msg=error_message,
+                                title=res.get("error_user_title", "Error"),
+                            )
+                    except ValueError:
+                        # If JSON parsing fails, log the raw text
+                        frappe.log_error("Meta Raw Error", f"Raw error response (not JSON): {e.response.text}")
+                        
                 except Exception as log_error:
                     frappe.log_error("Error Logging Failed", f"Could not parse error response: {log_error}")
                     frappe.log_error("Raw Response", f"Raw response: {e.response.text if hasattr(e.response, 'text') else 'No text'}")
+            else:
+                frappe.log_error("No Response Object", "Exception has no response object")
             
             # Fallback error handling
             frappe.throw(f"Failed to create template: {str(e)}")

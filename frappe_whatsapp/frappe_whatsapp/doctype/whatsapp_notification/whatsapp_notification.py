@@ -92,8 +92,8 @@ class WhatsAppNotification(Document):
                     frappe.log_error(f"Carousel template validation failed: {error}", "WhatsApp Carousel")
                     return
                 
-                # Build carousel payload
-                carousel_component = build_carousel_payload(template, self.carousel_parameters)
+                # Build carousel payload for message sending
+                carousel_component = build_carousel_payload(template, self.carousel_parameters, for_message_sending=True)
                 if carousel_component:
                     data["template"]["components"].append(carousel_component)
             else:
@@ -142,8 +142,8 @@ class WhatsAppNotification(Document):
                 }
             }
 
-            # Pass parameter values
-            if self.fields:
+            # Pass parameter values (only for non-carousel templates)
+            if self.fields and template.template_type != "Carousel":
                 parameters = []
                 for field in self.fields:
                     if isinstance(doc, Document):
@@ -240,8 +240,8 @@ class WhatsAppNotification(Document):
                     frappe.log_error(f"Carousel template validation failed: {error}", "WhatsApp Carousel")
                     return
                 
-                # Build carousel payload
-                carousel_component = build_carousel_payload(template, self.carousel_parameters, doc, doc_data)
+                # Build carousel payload for message sending
+                carousel_component = build_carousel_payload(template, self.carousel_parameters, doc, doc_data, for_message_sending=True)
                 if carousel_component:
                     data["template"]["components"].append(carousel_component)
             else:
