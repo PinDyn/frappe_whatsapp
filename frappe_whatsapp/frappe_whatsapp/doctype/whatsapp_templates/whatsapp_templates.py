@@ -354,6 +354,16 @@ class WhatsAppTemplates(Document):
             frappe.log_error("Carousel Debug", "No carousel cards found")
             return None
         
+        # Ensure carousel cards have their WhatsApp handles loaded
+        for card in self.carousel_cards:
+            if hasattr(card, 'name') and card.name:
+                # Load the handle from database if not already set
+                if not hasattr(card, 'whatsapp_handle') or not card.whatsapp_handle:
+                    stored_handle = frappe.db.get_value("WhatsApp Carousel Cards", card.name, "whatsapp_handle")
+                    if stored_handle:
+                        card.whatsapp_handle = stored_handle
+                        frappe.log_error("Carousel Debug", f"Loaded handle for card {card.card_index}: {stored_handle}")
+        
         # Use the carousel utils to build the correct structure
         from ...utils.carousel_utils import build_carousel_payload
         carousel_component = build_carousel_payload(self, access_token=self._token, app_id=self._app_id)

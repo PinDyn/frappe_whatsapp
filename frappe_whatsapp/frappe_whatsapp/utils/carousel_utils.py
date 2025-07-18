@@ -32,7 +32,7 @@ def build_carousel_payload(template, carousel_parameters=None, doc=None, doc_dat
     
     # Build carousel component
     carousel_component = {
-        "type": "carousel",
+        "type": "CAROUSEL",
         "cards": []
     }
     
@@ -150,6 +150,12 @@ def build_header_component(card, processed_params, doc=None, doc_data=None, acce
         dict: Header component payload
     """
     if card.header_type in ["IMAGE", "VIDEO"]:
+        frappe.logger().info(f"Building header component for card {card.card_index}, type: {card.header_type}")
+        frappe.logger().info(f"Card header_content: {card.header_content}")
+        frappe.logger().info(f"Card has whatsapp_handle attr: {hasattr(card, 'whatsapp_handle')}")
+        if hasattr(card, 'whatsapp_handle'):
+            frappe.logger().info(f"Card whatsapp_handle value: {card.whatsapp_handle}")
+        
         # Check if we already have a WhatsApp handle stored
         if hasattr(card, 'whatsapp_handle') and card.whatsapp_handle:
             frappe.logger().info(f"Using stored WhatsApp handle for card {card.card_index}: {card.whatsapp_handle}")
@@ -163,6 +169,7 @@ def build_header_component(card, processed_params, doc=None, doc_data=None, acce
         elif hasattr(card, 'name') and card.name:
             # Try to get the handle from the database
             stored_handle = frappe.db.get_value("WhatsApp Carousel Cards", card.name, "whatsapp_handle")
+            frappe.logger().info(f"Database lookup for card {card.name}: {stored_handle}")
             if stored_handle:
                 frappe.logger().info(f"Using database WhatsApp handle for card {card.card_index}: {stored_handle}")
                 return {
