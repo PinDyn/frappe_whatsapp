@@ -114,6 +114,18 @@ def build_card_payload(card, processed_params, doc=None, doc_data=None):
     buttons_component = build_buttons_component(card, doc, doc_data)
     if buttons_component:
         card_payload["components"].append(buttons_component)
+    else:
+        # Add default button if no buttons are specified (Meta requires at least 1 button per card)
+        default_button_component = {
+            "type": "BUTTONS",
+            "buttons": [
+                {
+                    "type": "quick_reply",
+                    "text": "Learn More"
+                }
+            ]
+        }
+        card_payload["components"].append(default_button_component)
     
     return card_payload
 
@@ -305,6 +317,7 @@ def validate_carousel_card(card):
     # Validate buttons
     if card.buttons and len(card.buttons) > 2:
         return False, "Maximum 2 buttons allowed per card"
+    # Note: We don't validate minimum buttons here since we add a default button if none exist
     
     return True, None 
 

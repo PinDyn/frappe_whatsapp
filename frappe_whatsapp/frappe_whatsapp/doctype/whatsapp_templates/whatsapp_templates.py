@@ -154,12 +154,18 @@ class WhatsAppTemplates(Document):
             self.db_update()
         except Exception as e:
             # Debug: Log the error response from Meta
-            if frappe.flags.integration_request:
+            frappe.log_error("Exception Details", f"Exception: {str(e)}")
+            frappe.log_error("Exception Type", f"Exception type: {type(e)}")
+            
+            if hasattr(e, 'response') and e.response:
                 try:
-                    response_data = frappe.flags.integration_request.json()
-                    frappe.log_error("Meta Error Response", f"Full error response: {json.dumps(response_data, indent=2)}")
-                    if 'error' in response_data:
-                        res = response_data['error']
+                    error_response = e.response.json()
+                    frappe.log_error("Meta Error Response", f"Full error response: {json.dumps(error_response, indent=2)}")
+                    frappe.log_error("Meta Error Status", f"Error status code: {e.response.status_code}")
+                    frappe.log_error("Meta Error Text", f"Error text: {e.response.text}")
+                    
+                    if 'error' in error_response:
+                        res = error_response['error']
                         error_message = res.get("error_user_msg", res.get("message"))
                         frappe.throw(
                             msg=error_message,
@@ -167,6 +173,7 @@ class WhatsAppTemplates(Document):
                         )
                 except Exception as log_error:
                     frappe.log_error("Error Logging Failed", f"Could not parse error response: {log_error}")
+                    frappe.log_error("Raw Response", f"Raw response: {e.response.text if hasattr(e.response, 'text') else 'No text'}")
             
             # Fallback error handling
             frappe.throw(f"Failed to create template: {str(e)}")
