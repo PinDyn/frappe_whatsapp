@@ -38,7 +38,7 @@
   },
   {
    "fieldname": "whatsapp_handle",
-   "fieldtype": "Data",
+   "fieldtype": "Long Text",
    "label": "WhatsApp Handle",
    "description": "WhatsApp media handle after upload (auto-filled)",
    "read_only": 1
