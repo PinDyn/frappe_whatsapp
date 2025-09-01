@@ -23,7 +23,8 @@ class WhatsAppTemplates(Document):
             self.get_session_id()
             self.get_media_id()
 
-        if not self.is_new():
+        # Skip update_template during fetch operations to avoid _media_id errors
+        if not self.is_new() and not getattr(self, '_skip_update_template', False):
             self.update_template()
 
 
@@ -271,10 +272,6 @@ def fetch():
             headers=headers,
         )
         
-        frappe.log_error("API Response", f"Total templates received: {len(response.get('data', []))}")
-        for template in response["data"]:
-            frappe.log_error("Template Structure", f"Template {template.get('name')}: {template}")
-
         for template in response["data"]:
             # set flag to insert or update
             flags = 1
@@ -292,11 +289,7 @@ def fetch():
             doc.id = template["id"]
 
             # update components
-            frappe.log_error("Template Processing", f"Processing template {doc.name} with {len(template.get('components', []))} components")
-            frappe.log_error("All Components", f"All components for {doc.name}: {template.get('components', [])}")
             for component in template["components"]:
-                frappe.log_error("Component Type", f"Processing component type: {component.get('type')} for template {doc.name}")
-                frappe.log_error("Component Details", f"Component details: {component}")
 
                 # update header
                 if component["type"] == "HEADER":
@@ -319,75 +312,71 @@ def fetch():
 
                 # update buttons
                 elif component["type"] == "BUTTONS":
-                    # Debug: Log the button component structure
-                    frappe.log_error("Button Component", f"Processing buttons for template {doc.name}: {component}")
-                    
-                    # Clear existing buttons first
-                    if flags:
-                        # Delete existing buttons for this template
-                        frappe.db.sql("""
-                            DELETE FROM `tabWhatsApp Template Buttons` 
-                            WHERE parent = %s AND parenttype = 'WhatsApp Templates'
-                        """, doc.name)
+                    # Clear existing buttons using proper child table handling
+                    doc.buttons = []
                     
                     # Add new buttons
                     buttons_list = component.get("buttons", [])
-                    frappe.log_error("Button Count", f"Found {len(buttons_list)} buttons")
                     
                     for idx, button in enumerate(buttons_list):
-                        frappe.log_error("Button Details", f"Processing button {idx}: {button}")
-                        
                         # Skip unsupported button types (if any)
                         if button.get("type") not in ["QUICK_REPLY", "URL", "PHONE_NUMBER", "COPY_CODE", "FLOW"]:
-                            frappe.log_error("Skipped Button", f"Skipping unsupported button type: {button.get('type')}")
                             continue
                         
-                        button_doc = frappe.new_doc("WhatsApp Template Buttons")
-                        button_doc.button_text = button.get("text", "")
-                        button_doc.button_type = button.get("type", "")
+                        # Create button row for child table (with explicit doctype)
+                        button_row = {
+                            "doctype": "WhatsApp Template Buttons",
+                            "button_text": button.get("text", ""),
+                            "button_type": button.get("type", ""),
+                            "idx": idx + 1
+                        }
                         
+                        # Set type-specific fields
                         if button.get("type") == "QUICK_REPLY":
-                            # For QUICK_REPLY, no payload needed in template creation
+                            # For QUICK_REPLY, no additional fields needed in template creation
                             pass
                         elif button.get("type") == "URL":
-                            button_doc.url = button.get("url", "")
+                            button_row["url"] = button.get("url", "")
                         elif button.get("type") == "PHONE_NUMBER":
-                            button_doc.phone_number = button.get("phone_number", "")
+                            button_row["phone_number"] = button.get("phone_number", "")
                         elif button.get("type") == "COPY_CODE":
-                            button_doc.copy_code_example = button.get("example", [""])[0] if button.get("example") else ""
+                            button_row["copy_code_example"] = button.get("example", [""])[0] if button.get("example") else ""
                         elif button.get("type") == "FLOW":
-                            # For FLOW buttons, we store the flow_id from template
-                            # The flow_token will be set in notification parameters when sending
-                            button_doc.flow_id = button.get("flow_id", "")
-                            button_doc.flow_action = button.get("flow_action", "")
-                            button_doc.navigate_screen = button.get("navigate_screen", "")
-                            # Note: flow_token is not stored in template, it's set in notification parameters
+                            # For FLOW buttons, store the flow configuration
+                            button_row["flow_id"] = str(button.get("flow_id", ""))
+                            button_row["flow_action"] = button.get("flow_action", "")
+                            button_row["navigate_screen"] = button.get("navigate_screen", "")
                         
-                        button_doc.parent = doc.name
-                        button_doc.parenttype = "WhatsApp Templates"
-                        button_doc.parentfield = "buttons"
-                        button_doc.idx = idx + 1
-                        
-                        try:
-                            button_doc.db_insert()
-                            frappe.log_error("Button Success", f"Successfully inserted button: {button_doc.button_text} of type {button_doc.button_type}")
-                        except Exception as e:
-                            frappe.log_error("Button Error", f"Failed to insert button: {e}")
+                        # Append to child table
+                        doc.append("buttons", button_row)
 
-            # if document exists update else insert
-            # used db_update and db_insert to ignore hooks
-            if flags:
-                doc.db_update()
-            else:
-                doc.db_insert()
-            frappe.db.commit()
+            # Save document with child tables properly handled
+            # Use save() to ensure child tables are processed correctly
+            try:
+                # Skip template update during fetch to avoid _media_id errors
+                doc._skip_update_template = True
+                doc.save(ignore_permissions=True)
+                frappe.db.commit()
+            except Exception as e:
+                frappe.log_error("Template Save Error", f"Failed to save template {doc.actual_name}: {str(e)}")
+                frappe.db.rollback()
+                raise
 
     except Exception as e:
-        res = frappe.flags.integration_request.json()["error"]
-        error_message = res.get("error_user_msg", res.get("message"))
-        frappe.throw(
-            msg=error_message,
-            title=res.get("error_user_title", "Error"),
-        )
+        # Handle API errors if integration_request exists
+        if hasattr(frappe.flags, 'integration_request') and frappe.flags.integration_request:
+            try:
+                res = frappe.flags.integration_request.json().get("error", {})
+                error_message = res.get("error_user_msg", res.get("message", str(e)))
+                frappe.throw(
+                    msg=error_message,
+                    title=res.get("error_user_title", "Error"),
+                )
+            except (AttributeError, KeyError, TypeError):
+                # Fallback if integration_request format is unexpected
+                frappe.throw(f"Error fetching templates: {str(e)}")
+        else:
+            # No integration_request, just throw the original error
+            frappe.throw(f"Error fetching templates: {str(e)}")
 
     return "Successfully fetched templates from meta"

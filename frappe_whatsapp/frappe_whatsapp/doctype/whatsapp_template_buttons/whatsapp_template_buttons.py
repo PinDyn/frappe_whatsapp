@@ -8,15 +8,16 @@ class WhatsAppTemplateButtons(Document):
     """WhatsApp Template Buttons."""
     
     def validate(self):
-        """Validate button configuration."""
-        if self.button_type == "QUICK_REPLY" and not self.payload:
-            frappe.throw("Payload is required for Quick Reply buttons")
+        """Validate button configuration for template storage."""
+        # Note: payload and flow_token are only required when sending messages,
+        # not when storing template definitions from Meta
         
-        if self.button_type == "URL" and not self.url:
-            frappe.throw("URL is required for URL buttons")
+        # Only validate fields that are actually required for template storage
+        if self.button_type == "URL" and hasattr(self, 'url') and self.url and not self.url.strip():
+            frappe.throw("URL cannot be empty for URL buttons")
             
-        if self.button_type == "PHONE_NUMBER" and not self.phone_number:
-            frappe.throw("Phone number is required for Phone Number buttons")
+        if self.button_type == "PHONE_NUMBER" and hasattr(self, 'phone_number') and self.phone_number and not self.phone_number.strip():
+            frappe.throw("Phone number cannot be empty for Phone Number buttons")
             
-        if self.button_type == "FLOW" and not self.flow_token:
-            frappe.throw("Flow Token is required for Flow buttons") 
+        if self.button_type == "FLOW" and hasattr(self, 'flow_id') and self.flow_id and not str(self.flow_id).strip():
+            frappe.throw("Flow ID cannot be empty for Flow buttons") 
