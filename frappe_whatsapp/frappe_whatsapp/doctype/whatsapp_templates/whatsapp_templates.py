@@ -76,6 +76,10 @@ class WhatsAppTemplates(Document):
 
 
     def after_insert(self):
+        # Skip template creation in Meta if this is a fetch operation
+        if getattr(self, '_skip_after_insert', False):
+            return
+            
         if self.template_name:
             self.actual_name = self.template_name.lower().replace(" ", "_")
 
@@ -304,6 +308,8 @@ def fetch():
                 doc = frappe.new_doc("WhatsApp Templates")
                 doc.template_name = template["name"]
                 doc.actual_name = template["name"]
+                # Skip after_insert during fetch to prevent recreating template in Meta
+                doc._skip_after_insert = True
 
             doc.status = template["status"]
             doc.language_code = template["language"]
@@ -380,6 +386,9 @@ def fetch():
             try:
                 # Skip template update during fetch to avoid _media_id errors
                 doc._skip_update_template = True
+                # Preserve the skip flag for after_insert
+                if hasattr(doc, '_skip_after_insert'):
+                    doc._skip_after_insert = True
                 doc.save(ignore_permissions=True)
                 frappe.db.commit()
             except Exception as e:
