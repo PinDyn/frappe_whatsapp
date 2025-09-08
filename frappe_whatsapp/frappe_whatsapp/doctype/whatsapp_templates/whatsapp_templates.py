@@ -96,7 +96,10 @@ class WhatsAppTemplates(Document):
 
         data["components"].append(body)
         if self.header_type:
-            data["components"].append(self.get_header())
+            header_component = self.get_header()
+            # Only add header component if it has the required fields
+            if self.header_type == "TEXT" or (self.header_type in ["IMAGE", "DOCUMENT"] and "example" in header_component):
+                data["components"].append(header_component)
 
         # add footer
         if self.footer:
@@ -143,7 +146,10 @@ class WhatsAppTemplates(Document):
             body.update({"example": {"body_text": [self.sample_values.split(",")]}})
         data["components"].append(body)
         if self.header_type:
-            data["components"].append(self.get_header())
+            header_component = self.get_header()
+            # Only add header component if it has the required fields
+            if self.header_type == "TEXT" or (self.header_type in ["IMAGE", "DOCUMENT"] and "example" in header_component):
+                data["components"].append(header_component)
         if self.footer:
             data["components"].append({"type": "FOOTER", "text": self.footer})
         
@@ -208,14 +214,23 @@ class WhatsAppTemplates(Document):
                 samples = self.sample.split(", ")
                 header.update({"example": {"header_text": samples}})
         else:
-            # For IMAGE and DOCUMENT headers, only include media_id if it exists
-            # This prevents errors when fetching templates from Meta where _media_id is not set
+            # For IMAGE and DOCUMENT headers, we need to handle different scenarios:
+            # 1. Template creation: We have _media_id and need to include example
+            # 2. Template fetching: We don't have _media_id and should skip example
+            # 3. Template update: We might have _media_id if updating locally created template
+            
             if hasattr(self, '_media_id') and self._media_id:
+                # This is for template creation or update of locally created templates
                 header.update({"example": {"header_handle": [self._media_id]}})
-            else:
-                # For fetched templates, we don't have the media_id, so we'll skip the example
-                # The template will still work for sending messages, just not for creating/updating
-                pass
+            elif self.header_type in ["IMAGE", "DOCUMENT"] and self.sample:
+                # This is for template creation where we have a sample file but no _media_id yet
+                # We need to get the media_id first
+                if not hasattr(self, '_media_id'):
+                    self.get_session_id()
+                    self.get_media_id()
+                header.update({"example": {"header_handle": [self._media_id]}})
+            # If we don't have _media_id and no sample, this is likely a fetched template
+            # In this case, we skip the example field to avoid Meta API errors
 
         return header
 
