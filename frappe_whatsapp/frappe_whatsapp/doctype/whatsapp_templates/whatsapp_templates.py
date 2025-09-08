@@ -126,7 +126,12 @@ class WhatsAppTemplates(Document):
             )
 
     def update_template(self):
-        """Update template to meta."""
+        """Update template to meta.
+        
+        Note: This method should only be called for locally created templates
+        that have media files attached. For templates fetched from Meta,
+        this method will be skipped to avoid _media_id errors.
+        """
         self.get_settings()
         data = {"components": []}
 
@@ -203,12 +208,14 @@ class WhatsAppTemplates(Document):
                 samples = self.sample.split(", ")
                 header.update({"example": {"header_text": samples}})
         else:
-            pdf_link = ''
-            if not self.sample:
-                key = frappe.get_doc(self.doctype, self.name).get_document_share_key()
-                link = get_pdf_link(self.doctype, self.name)
-                pdf_link = f"{frappe.utils.get_url()}{link}&key={key}"
-            header.update({"example": {"header_handle": [self._media_id]}})
+            # For IMAGE and DOCUMENT headers, only include media_id if it exists
+            # This prevents errors when fetching templates from Meta where _media_id is not set
+            if hasattr(self, '_media_id') and self._media_id:
+                header.update({"example": {"header_handle": [self._media_id]}})
+            else:
+                # For fetched templates, we don't have the media_id, so we'll skip the example
+                # The template will still work for sending messages, just not for creating/updating
+                pass
 
         return header
 
@@ -298,6 +305,9 @@ def fetch():
                     # if format is text update sample text
                     if component["format"] == "TEXT":
                         doc.header = component["text"]
+                    # For IMAGE and DOCUMENT headers, we don't store the media_id from Meta
+                    # as it's only needed for template creation/updates, not for fetching
+                    # The template will work for sending messages without the media_id
                 # Update footer text
                 elif component["type"] == "FOOTER":
                     doc.footer = component["text"]
