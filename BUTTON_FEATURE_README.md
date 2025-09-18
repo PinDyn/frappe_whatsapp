@@ -5,7 +5,7 @@ This feature adds support for WhatsApp template buttons with custom payloads to 
 ## Features Added
 
 1. **WhatsApp Template Buttons Doctype**: A new doctype to define buttons with their payloads
-2. **Button Support in Templates**: WhatsApp templates can now include up to 3 buttons
+2. **Button Support in Templates**: WhatsApp templates can now include up to 10 buttons
 3. **Button Types Supported**:
    - **QUICK_REPLY**: Buttons that send a custom payload when clicked
    - **URL**: Buttons that open a URL when clicked
@@ -108,7 +108,7 @@ The buttons are sent to Meta's WhatsApp API in the correct format:
 
 ## Limitations
 
-- Maximum 3 buttons per template (WhatsApp API limitation)
+- Maximum 10 buttons per template (WhatsApp API limitation)
 - Buttons must be approved by Meta along with the template
 - Only certain template categories support buttons
 

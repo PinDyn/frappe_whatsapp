@@ -155,7 +155,7 @@
    "label": "Template Buttons"
   },
   {
-   "description": "Add buttons to your WhatsApp template (max 3 buttons)",
+   "description": "Add buttons to your WhatsApp template (max 10 buttons)",
    "fieldname": "buttons",
    "fieldtype": "Table",
    "label": "Buttons",

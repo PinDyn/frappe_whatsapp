@@ -355,7 +355,7 @@ class WhatsAppNotification(Document):
 
     def get_template_buttons_component(self, template, doc=None, doc_data=None):
         """Get buttons component for template message."""
-        if not template.buttons or len(template.buttons) > 3:
+        if not template.buttons or len(template.buttons) > 10:
             return None
             
         # Validate button parameters before processing

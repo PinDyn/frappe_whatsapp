@@ -160,7 +160,7 @@ class WhatsAppMessage(Document):
 
     def get_template_buttons_component(self, template):
         """Get buttons component for template message."""
-        if not template.buttons or len(template.buttons) > 3:
+        if not template.buttons or len(template.buttons) > 10:
             return None
             
         buttons = []
